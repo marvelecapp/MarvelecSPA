@@ -1,7 +1,6 @@
 # marvelec_app/views/exportar.py
 """Exportaciones a Excel para supervisión: reportes, estado de puntos y asistencia mensual."""
 from collections import defaultdict
-from datetime import date
 
 from django.http import HttpResponse
 from django.utils import timezone
@@ -121,11 +120,7 @@ def exportar_estado_puntos(request):
 def exportar_asistencia(request):
     """Asistencia del mes: días confirmados por trabajador (base para remuneraciones)."""
     hoy = consultas.hoy_local()
-    try:
-        anio, mes = (int(x) for x in request.GET.get('mes', '').split('-'))
-        date(anio, mes, 1)
-    except ValueError:
-        anio, mes = hoy.year, hoy.month
+    anio, mes = consultas.parse_mes(request.GET.get('mes'), hoy)
     obra_id = consultas.obra_fija(request.perfil) or consultas.parse_int(request.GET.get('obra'))
     dias, filas = consultas.asistencia_mensual(request.perfil, anio, mes, obra_id)
 

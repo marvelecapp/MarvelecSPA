@@ -149,6 +149,16 @@ def parse_int(valor):
         return None
 
 
+def parse_mes(valor, por_defecto):
+    """'2026-03' -> (2026, 3). Si no es un mes válido, devuelve el de `por_defecto`."""
+    try:
+        anio, mes = (int(x) for x in str(valor or '').split('-'))
+        date(anio, mes, 1)
+    except (ValueError, OverflowError):  # un año enorme desborda el entero de C, no es ValueError
+        return por_defecto.year, por_defecto.month
+    return anio, mes
+
+
 def leer_filtros(params, desde_por_defecto=None):
     """Normaliza los filtros (los valores inválidos se ignoran)."""
     estados_validos = {e for e, _ in ReporteAvance.ESTADO_CHOICES}

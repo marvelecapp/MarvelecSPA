@@ -56,6 +56,7 @@
             canvas.width = Math.round(fuente.width * escala);
             canvas.height = Math.round(fuente.height * escala);
             canvas.getContext('2d').drawImage(fuente, 0, 0, canvas.width, canvas.height);
+            if (fuente.close) fuente.close(); else URL.revokeObjectURL(fuente.src);
             const blob = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', 0.8));
             return blob && blob.size < archivo.size ? blob : archivo;
         } catch (e) {

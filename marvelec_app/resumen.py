@@ -59,8 +59,15 @@ def texto_resumen(datos):
 
 def enviar_resumen_diario(fecha, forzar=False):
     """Envía el resumen del día a cada supervisor/gerente. No se repite para la misma fecha."""
-    if not forzar and ResumenDiarioEnviado.objects.filter(fecha=fecha).exists():
-        return {'enviado': False, 'motivo': 'Ya se envió el resumen de este día.', 'destinatarios': 0}
+    # La fila del día se reserva ANTES de enviar: los reintentos del cron se solapan mientras
+    # Render despierta, y comprobando sólo al principio cada supervisor recibía el resumen dos veces.
+    try:
+        with transaction.atomic():
+            registro = ResumenDiarioEnviado.objects.create(fecha=fecha)
+    except IntegrityError:
+        if not forzar:
+            return {'enviado': False, 'motivo': 'Ya se envió el resumen de este día.', 'destinatarios': 0}
+        registro = ResumenDiarioEnviado.objects.get(fecha=fecha)
 
     revisores = PerfilTrabajador.objects.filter(
         rol__in=[PerfilTrabajador.ROL_SUPERVISOR, PerfilTrabajador.ROL_GERENCIA],
@@ -79,9 +86,6 @@ def enviar_resumen_diario(fecha, forzar=False):
         notificar([perfil.usuario], Notificacion.TIPO_RESUMEN_DIARIO, titulo, texto_resumen(datos), url)
         enviados += 1
 
-    try:
-        with transaction.atomic():
-            ResumenDiarioEnviado.objects.update_or_create(fecha=fecha, defaults={'destinatarios': enviados})
-    except IntegrityError:
-        pass
+    registro.destinatarios = enviados
+    registro.save(update_fields=['destinatarios'])
     return {'enviado': True, 'destinatarios': enviados}

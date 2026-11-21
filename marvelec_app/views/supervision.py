@@ -223,8 +223,14 @@ def liberar_incidencia(request, pk):
     if not request.perfil.puede_revisar_obra(incidencia.punto.rack.obra_id):
         raise Http404
     form = LiberarIncidenciaForm(request.POST)
-    form.is_valid()
-    liberar(incidencia, request.user, form.cleaned_data.get('comentario', ''))
+    if not form.is_valid():
+        # Sin esto, un comentario demasiado largo se descartaba en silencio y se perdía el registro.
+        mensaje = ' '.join(e for errores in form.errors.values() for e in errores)
+        if es_fetch(request):
+            return JsonResponse({'ok': False, 'mensaje': mensaje}, status=400)
+        messages.error(request, mensaje)
+        return redirigir_seguro(request, reverse('marvelec_app:incidencias'))
+    liberar(incidencia, request.user, form.cleaned_data['comentario'])
     texto = f'{incidencia.punto.codigo} liberado; ya puede seguir avanzando.'
     if es_fetch(request):
         return JsonResponse({'ok': True, 'mensaje': texto})
@@ -258,11 +264,7 @@ def asistencia_dia(request):
 def asistencia_mes(request):
     perfil = request.perfil
     hoy = consultas.hoy_local()
-    try:
-        anio, mes = (int(x) for x in request.GET.get('mes', '').split('-'))
-        date(anio, mes, 1)
-    except ValueError:
-        anio, mes = hoy.year, hoy.month
+    anio, mes = consultas.parse_mes(request.GET.get('mes'), hoy)
     obra_id = consultas.obra_fija(perfil) or consultas.parse_int(request.GET.get('obra'))
     dias, filas = consultas.asistencia_mensual(perfil, anio, mes, obra_id)
     primero = date(anio, mes, 1)
@@ -359,6 +361,8 @@ def revisar_masivo(request):
         pk__in=ids, estado=ReporteAvance.ESTADO_PENDIENTE
     ).exclude(trabajador=request.user)
     n = 0
+    # shortcut: cada reporte abre su propio hilo para avisar; la cola pagina de 20 en 20 y con eso
+    # alcanza. Si alguna vez se aprueban cientos de una vez, agrupar los push en un solo hilo.
     for reporte in reportes:
         revisar_reporte(reporte, request.user, 'aprobar')
         n += 1

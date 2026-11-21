@@ -17,7 +17,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 TESTING = len(sys.argv) > 1 and sys.argv[1] == 'test'
 
-DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
+# Render proporciona esta variable automáticamente
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+
+# En Render nunca se depura: con DEBUG=True se mostrarían las trazas y se aceptaría la
+# SECRET_KEY de desarrollo, que está en el repositorio.
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True' and not RENDER_EXTERNAL_HOSTNAME
 
 SECRET_KEY = os.environ.get('SECRET_KEY', '')
 if not SECRET_KEY:
@@ -26,9 +31,6 @@ if not SECRET_KEY:
     SECRET_KEY = 'dev-insecure-marvelec-k3y-solo-desarrollo'
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
-
-# Render proporciona esta variable automáticamente
-RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 

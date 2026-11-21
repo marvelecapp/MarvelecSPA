@@ -15,6 +15,7 @@ La carga nunca borra puntos: crea los nuevos y actualiza paquete/metraje de los 
 import re
 import unicodedata
 from dataclasses import asdict, dataclass
+from itertools import islice
 
 from django.db import transaction
 
@@ -31,6 +32,9 @@ ENCABEZADOS = {
     'zona': 'zona', 'sector': 'zona', 'metros': 'metros', 'metraje': 'metros', 'largo': 'metros',
 }
 MAX_FILAS_VACIAS = 6
+# Una hoja se lee completa a memoria. Una planilla real tiene cientos de filas; el tope evita
+# que un archivo enorme (el formulario acepta hasta 10 MB) deje sin memoria al servidor.
+MAX_FILAS_HOJA = 5000
 
 
 @dataclass
@@ -135,7 +139,12 @@ def leer_excel(archivo):
 
     resultado = Resultado()
     for hoja in libro.worksheets:
-        filas = [list(f) for f in hoja.iter_rows(values_only=True)]
+        filas = [list(f) for f in islice(hoja.iter_rows(values_only=True), MAX_FILAS_HOJA + 1)]
+        if len(filas) > MAX_FILAS_HOJA:
+            resultado.errores.append(
+                f'Hoja "{hoja.title}": supera las {MAX_FILAS_HOJA} filas. Divídela en varias hojas.'
+            )
+            continue
         if not any(any(_texto(c) for c in f) for f in filas):
             continue
         encabezado = _buscar_encabezado(filas)
@@ -302,8 +311,11 @@ def aplicar(resultado, obra):
     racks = {r.nombre: r for r in Rack.objects.filter(obra=obra)}
     zonas = {z.nombre.lower(): z for z in Zona.objects.filter(obra=obra)}
     paquetes = {(p.rack_id, p.numero): p for p in Paquete.objects.filter(rack__obra=obra)}
+    # Los puntos de la obra se traen de una vez: una planilla grande hacía una consulta por punto
+    # y la carga se pasaba del tiempo máximo de Render antes de terminar.
+    existentes = {(p.rack_id, p.tipo_id, p.numero): p for p in Punto.objects.filter(rack__obra=obra)}
     vistos = set()  # paquetes cuyo metraje ya se fijó en esta carga
-    creados = actualizados = 0
+    nuevos, cambiados = [], []
 
     for fila in resultado.puntos:
         tipo = tipos.get(fila.sigla)
@@ -341,13 +353,18 @@ def aplicar(resultado, obra):
 
         # El metraje queda en el punto sólo si difiere del de su paquete (tabla simple con largos por punto).
         metros_punto = fila.metros if paquete is None or fila.metros != paquete.metros else None
-        _, creado = Punto.objects.update_or_create(
-            rack=rack, tipo=tipo, numero=fila.numero, defaults={'paquete': paquete, 'metros': metros_punto},
-        )
-        creados += creado
-        actualizados += not creado
+        punto = existentes.get((rack.pk, tipo.pk, fila.numero))
+        if punto is None:
+            nuevos.append(Punto(rack=rack, tipo=tipo, numero=fila.numero, paquete=paquete, metros=metros_punto))
+        else:
+            punto.paquete, punto.metros = paquete, metros_punto
+            cambiados.append(punto)
 
-    return {'creados': creados, 'actualizados': actualizados, 'racks': len({f.rack for f in resultado.puntos})}
+    # `_quitar_duplicados` ya garantizó que no se repita (rack, sigla, número) en la planilla.
+    Punto.objects.bulk_create(nuevos, batch_size=500)
+    Punto.objects.bulk_update(cambiados, ['paquete', 'metros'], batch_size=500)
+    return {'creados': len(nuevos), 'actualizados': len(cambiados),
+            'racks': len({f.rack for f in resultado.puntos})}
 
 
 def plantilla_tabla():

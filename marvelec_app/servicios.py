@@ -295,21 +295,28 @@ def registrar_incidencia(usuario, puntos, tipo, foto=None, comentario='', latitu
     creada = leer_fecha_cliente(fecha_cliente)
     nuevas, omitidos = [], []
 
-    with transaction.atomic():
-        for punto in puntos:
-            if punto.pk in ya_abiertas:
-                omitidos.append(f'{punto.codigo}: ya tiene una incidencia abierta de este tipo')
-                continue
-            incidencia = Incidencia(
-                punto=punto, tipo=tipo, reportada_por=usuario, creada=creada, comentario=comentario.strip(),
-                latitud=latitud, longitud=longitud, uuid_cliente=uuid_cliente, enviado_offline=offline,
-            )
-            if foto and not nuevas:
-                incidencia.foto = foto
-            elif nuevas and nuevas[0].foto:
-                incidencia.foto = nuevas[0].foto.name  # la misma foto respalda a todos los puntos
-            incidencia.save()
-            nuevas.append(incidencia)
+    try:
+        with transaction.atomic():
+            for punto in puntos:
+                if punto.pk in ya_abiertas:
+                    omitidos.append(f'{punto.codigo}: ya tiene una incidencia abierta de este tipo')
+                    continue
+                incidencia = Incidencia(
+                    punto=punto, tipo=tipo, reportada_por=usuario, creada=creada, comentario=comentario.strip(),
+                    latitud=latitud, longitud=longitud, uuid_cliente=uuid_cliente, enviado_offline=offline,
+                )
+                if foto and not nuevas:
+                    incidencia.foto = foto
+                elif nuevas and nuevas[0].foto:
+                    incidencia.foto = nuevas[0].foto.name  # la misma foto respalda a todos los puntos
+                incidencia.save()
+                nuevas.append(incidencia)
+    except IntegrityError:
+        # Dos envíos simultáneos del mismo punto: sólo cabe una incidencia abierta por tipo.
+        existentes = uuid_cliente and list(Incidencia.objects.filter(uuid_cliente=uuid_cliente, reportada_por=usuario))
+        if existentes:
+            return existentes, [], False
+        raise ValidationError('Otra persona acaba de bloquear estos puntos. Vuelve a intentarlo.')
 
     if not nuevas:
         raise ValidationError(omitidos or 'No se registró ninguna incidencia.')

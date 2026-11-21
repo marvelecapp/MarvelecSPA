@@ -165,8 +165,14 @@ class ImportadorTests(TestCase):
         self.assertEqual(Punto.objects.get(rack__nombre='1H', tipo__sigla='DT', numero=42).metros_efectivos, 60)
 
         otra_vez = importador.aplicar(importador.leer_excel(self._planilla()), self.obra)
-        self.assertEqual(otra_vez['creados'], 0)
+        self.assertEqual((otra_vez['creados'], otra_vez['actualizados']), (0, 6))
         self.assertEqual(Punto.objects.count(), 6)
+
+        # Los puntos ya cargados se actualizan en bloque: al recargar se repone lo que se les quitó.
+        Punto.objects.filter(rack__nombre='1H', tipo__sigla='DT', numero=42).update(metros=None, paquete=None)
+        importador.aplicar(importador.leer_excel(self._planilla()), self.obra)
+        punto = Punto.objects.get(rack__nombre='1H', tipo__sigla='DT', numero=42)
+        self.assertEqual((punto.paquete.numero, punto.metros_efectivos), (2, 60))
 
     def test_formato_tabla_con_zona_y_metros_por_punto(self):
         libro = openpyxl.Workbook()
@@ -591,6 +597,21 @@ class ResumenDiarioTests(BaseEscenario):
         aviso = Notificacion.objects.get(usuario=self.sup_a, tipo=Notificacion.TIPO_RESUMEN_DIARIO)
         self.assertIn('Juan Pérez', aviso.cuerpo)
 
+    def test_el_dia_se_reserva_antes_de_enviar(self):
+        """El cron reintenta mientras Render despierta: el segundo intento no debe volver a avisar."""
+        from .resumen import enviar_resumen_diario
+        hoy = consultas.hoy_local()
+        self._avance(self.trab_a, ['DT-001'], ['tendido'])
+        primero = enviar_resumen_diario(hoy)
+        avisos = Notificacion.objects.filter(tipo=Notificacion.TIPO_RESUMEN_DIARIO).count()
+        self.assertEqual(ResumenDiarioEnviado.objects.get(fecha=hoy).destinatarios, primero['destinatarios'])
+
+        self.assertFalse(enviar_resumen_diario(hoy)['enviado'])
+        self.assertEqual(Notificacion.objects.filter(tipo=Notificacion.TIPO_RESUMEN_DIARIO).count(), avisos)
+        # --forzar sigue reenviando, sobre la misma fila del día.
+        self.assertTrue(enviar_resumen_diario(hoy, forzar=True)['enviado'])
+        self.assertEqual(ResumenDiarioEnviado.objects.filter(fecha=hoy).count(), 1)
+
     @override_settings(CRON_TOKEN='secreto')
     def test_endpoint_requiere_token(self):
         url = reverse('marvelec_app:tarea_resumen_diario')
@@ -651,6 +672,18 @@ class ExcelTests(BaseEscenario):
         fila = [c.value for c in ws[2]]
         self.assertEqual(fila[4], 'DT-001')
         self.assertEqual(fila[7], 'Pedro Soto')  # quién hizo el tendido
+
+
+    def test_mes_invalido_cae_al_mes_actual(self):
+        """Un año gigante desborda el entero de C: antes devolvía error 500."""
+        hoy = consultas.hoy_local()
+        self.assertEqual(consultas.parse_mes('2026-03', hoy), (2026, 3))
+        for malo in ('99999999999999999999-1', '2026-13', 'abc', '', None):
+            self.assertEqual(consultas.parse_mes(malo, hoy), (hoy.year, hoy.month), malo)
+        self._login("sup_a")
+        for vista in ('exportar_asistencia', 'asistencia_mes'):
+            r = self.client.get(reverse(f'marvelec_app:{vista}'), {'mes': '99999999999999999999-1'})
+            self.assertEqual(r.status_code, 200, vista)
 
 
 class CargarPuntosVistaTests(BaseEscenario):

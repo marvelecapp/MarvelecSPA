@@ -9,6 +9,7 @@
 
     const DB_NOMBRE = 'marvelec';
     const STORE = 'outbox';
+    const MAX_INTENTOS = 5;
 
     function abrir() {
         return new Promise((resolve, reject) => {
@@ -82,6 +83,11 @@
                 return { estado: 'rechazado', data };
             }
             item.intentos = (item.intentos || 0) + 1;
+            // Tras varios fallos del servidor se deja de reintentar en silencio: el registro aparece
+            // en la bandeja del trabajador, que decide si lo descarta o avisa a su supervisor.
+            if (item.intentos >= MAX_INTENTOS) {
+                item.error = data.mensaje || 'El servidor falló varias veces. Avisa a tu supervisor.';
+            }
             await Outbox.guardar(item);
             return { estado: 'error', data };
         },
