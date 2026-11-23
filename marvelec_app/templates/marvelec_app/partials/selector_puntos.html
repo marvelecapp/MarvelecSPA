@@ -1,22 +1,45 @@
 {% load marvelec_tags %}
+{% comment %}
+Etapa, tipo de red y número en una sola sección: antes el trabajador elegía la etapa en un
+sitio y los puntos en otro. Los números van en cuadrícula paginada porque hay obras de 800.
+{% endcomment %}
 <section class="card paso" data-selector data-seleccion="{% if form.puntos.value %}{{ form.puntos.value|join:',' }}{% endif %}">
-    <div class="paso-titulo"><span class="paso-num">{{ num }}</span> {{ titulo|default:"Puntos" }}</div>
+    <div class="paso-titulo"><span class="paso-num">{{ num }}</span> {{ titulo|default:"¿Qué terminaste?" }}</div>
+
+    {% if con_etapas %}
+    <div class="field">
+        <label for="sel-etapa">Etapa</label>
+        <select name="etapas" id="sel-etapa" data-etapa>
+            <option value="">Elige la etapa</option>
+            {% for valor, etiqueta in form.fields.etapas.choices %}
+            <option value="{{ valor }}" {% if valor in form.etapas.value %}selected{% endif %}>{{ etiqueta }}</option>
+            {% endfor %}
+        </select>
+        {{ form.etapas.errors }}
+    </div>
+    {% endif %}
 
     <div class="field">
-        <label for="{{ form.codigos.id_for_label }}">Escribe los códigos como en WhatsApp</label>
-        <div class="codigos-rapidos">
-            {{ form.codigos }}
-            <button type="button" class="btn btn-secondary" data-aplicar-codigos>{% icono "check" "icon-sm" %} Marcar</button>
-        </div>
-        <span class="help">Ej.: <b>DT 1-2-3-17, VD 9</b> · para un rango usa “a”: <b>DT 1 a 12</b></span>
-        <span class="error" data-codigos-error hidden></span>
-        {{ form.codigos.errors }}
+        <label for="sel-tipo">Tipo de red</label>
+        <select id="sel-tipo" data-tipo><option value="">—</option></select>
     </div>
 
-    <div class="selector-barra">
-        <span><b data-sel-n>0</b> seleccionado<span data-sel-plural>s</span></span>
-        <button type="button" class="btn btn-ghost btn-sm" data-sel-limpiar>{% icono "x" "icon-sm" %} Limpiar</button>
+    <div class="field">
+        <div class="grilla-cabecera">
+            <label>Número de punto</label>
+            <span class="grilla-nav" data-grilla-nav hidden>
+                <button type="button" class="btn btn-ghost btn-sm btn-icon" data-pagina="-1"
+                        aria-label="Página anterior">{% icono "chevron-left" "icon-sm" %}</button>
+                <span data-grilla-pagina></span>
+                <button type="button" class="btn btn-ghost btn-sm btn-icon" data-pagina="1"
+                        aria-label="Página siguiente">{% icono "chevron-right" "icon-sm" %}</button>
+            </span>
+        </div>
+        <div class="pgrid" data-grilla>
+            <div class="empty small">{% icono "network" %}Elige el tipo de red para ver sus números.</div>
+        </div>
     </div>
+
     <div class="selector-leyenda small muted" data-leyenda>
         <span><i class="pchip-demo"></i>Disponible</span>
         <span><i class="pchip-demo is-sel"></i>Seleccionado</span>
@@ -24,8 +47,22 @@
         <span><i class="pchip-demo is-falta"></i>Falta etapa previa</span>
         <span><i class="pchip-demo is-bloq"></i>Bloqueado</span>
     </div>
-    <div class="paquetes" data-paquetes>
-        <div class="empty small">{% icono "network" %}Elige el rack para ver sus puntos.</div>
+
+    <div class="selector-barra">
+        <span><b data-sel-n>0</b> seleccionado<span data-sel-plural>s</span></span>
+        <button type="button" class="btn btn-ghost btn-sm" data-sel-limpiar>{% icono "x" "icon-sm" %} Limpiar</button>
     </div>
+
+    <details class="codigos-detalle">
+        <summary>O escríbelos como en WhatsApp</summary>
+        <div class="codigos-rapidos">
+            {{ form.codigos }}
+            <button type="button" class="btn btn-secondary" data-aplicar-codigos>{% icono "check" "icon-sm" %} Marcar</button>
+        </div>
+        <span class="help">Ej.: <b>DT 1-2-3-17, VD 9</b> · para un rango usa “a”: <b>DT 1 a 12</b></span>
+        <span class="error" data-codigos-error hidden></span>
+        {{ form.codigos.errors }}
+    </details>
+
     <div data-puntos-hidden></div>
 </section>

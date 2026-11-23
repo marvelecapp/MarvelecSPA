@@ -701,22 +701,6 @@ code { font-size: .85em; padding: 1px 5px; border-radius: 5px; background: var(-
 .accion:active { transform: scale(.97); }
 .foto-picker-lg { min-height: 220px; }
 
-.etapas-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.etapa-opcion {
-    position: relative; display: flex; align-items: center; min-height: 52px; padding: 8px 12px 8px 16px;
-    border-radius: 12px; border: 1px solid var(--border-strong); background: var(--surface);
-    font-weight: 650; font-size: .88rem; line-height: 1.2; cursor: pointer; overflow: hidden;
-}
-.etapa-opcion::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 5px; background: var(--c); }
-.etapa-opcion input { position: absolute; opacity: 0; pointer-events: none; }
-.etapa-opcion:has(input:checked) {
-    border-color: var(--c); background: color-mix(in srgb, var(--c) 14%, var(--surface)); color: var(--text);
-    box-shadow: inset 0 0 0 1px var(--c);
-}
-.etapa-opcion:has(input:checked)::after {
-    content: "✓"; margin-left: auto; padding-left: 6px; font-weight: 900; color: var(--c);
-}
-.etapa-opcion:has(input:focus-visible) { box-shadow: var(--focus); }
 
 .codigos-rapidos { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start; }
 .codigos-rapidos textarea { min-height: 46px; text-transform: uppercase; }
@@ -728,14 +712,20 @@ code { font-size: .85em; padding: 1px 5px; border-radius: 5px; background: var(-
 .selector-barra b { font-size: 1.15rem; color: var(--brand-text); }
 .selector-leyenda { display: flex; flex-wrap: wrap; gap: 4px 12px; }
 .selector-leyenda span { display: inline-flex; align-items: center; gap: 5px; }
-.paquetes { display: grid; gap: 12px; }
-.paquete { border: 1px solid var(--border); border-radius: 12px; padding: 10px; background: var(--surface-2); }
-.paquete-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-.paquete-head b { font-size: .92rem; }
-.paquete-head .btn { margin-left: auto; }
-.pchips { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Cuadrícula de números: 10 por fila, con flechas cuando hay más de 100. */
+.grilla-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.grilla-nav { display: inline-flex; align-items: center; gap: 2px; font-size: .82rem;
+    font-variant-numeric: tabular-nums; color: var(--muted); }
+.grilla-nav .btn-icon { width: 32px; height: 32px; min-height: 32px; }
+.pgrid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-top: 8px; }
+.pgrid .empty { grid-column: 1 / -1; }
+@media (max-width: 420px) { .pgrid { grid-template-columns: repeat(5, 1fr); } }
+
+.codigos-detalle summary { cursor: pointer; font-size: .86rem; color: var(--brand-text); font-weight: 650; }
+.codigos-detalle .codigos-rapidos { margin-top: 8px; }
+
 .pchip, .pchip-demo {
-    min-height: 40px; min-width: 76px; padding: 0 10px; border-radius: 10px;
+    min-height: 40px; padding: 0 2px; border-radius: 8px;
     border: 1px solid var(--border-strong); background: var(--surface); color: var(--text);
     font: inherit; font-size: .85rem; font-weight: 700; font-variant-numeric: tabular-nums; cursor: pointer;
 }

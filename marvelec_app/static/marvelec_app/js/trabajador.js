@@ -191,8 +191,13 @@
         datos.racks.forEach((r) => { racks[String(r.id)] = r; });
 
         const rackSel = form.querySelector('[name=rack]');
-        const cajas = Array.from(form.querySelectorAll('input[name=etapas]'));
-        const cont = raiz.querySelector('[data-paquetes]');
+        const etapaSel = raiz.querySelector('[data-etapa]');
+        const tipoSel = raiz.querySelector('[data-tipo]');
+        const nav = raiz.querySelector('[data-grilla-nav]');
+        const etiquetaPagina = raiz.querySelector('[data-grilla-pagina]');
+        const cont = raiz.querySelector('[data-grilla]');
+        const POR_PAGINA = 100;  // cuadrícula de 10 × 10
+        let pagina = 0;
         const ocultos = raiz.querySelector('[data-puntos-hidden]');
         const texto = raiz.querySelector('[name=codigos]');
         const errorCodigos = raiz.querySelector('[data-codigos-error]');
@@ -209,7 +214,7 @@
         }
 
         function etapasElegidas() {
-            return cajas.filter((c) => c.checked).map((c) => c.value);
+            return etapaSel && etapaSel.value ? [etapaSel.value] : [];
         }
 
         function rackActual() { return rackSel ? racks[rackSel.value] : null; }
@@ -252,49 +257,70 @@
             form.querySelectorAll('[data-submit-n]').forEach((el) => { el.textContent = n ? '(' + n + ')' : ''; });
         }
 
+        // Los tipos de red del rack (DT, VD, RI…), en el orden en que vienen del servidor.
+        function llenarTipos() {
+            const rack = rackActual();
+            const previo = tipoSel.value;
+            const siglas = [];
+            if (rack) rack.puntos.forEach((p) => { if (!siglas.includes(p[1])) siglas.push(p[1]); });
+            tipoSel.innerHTML = (siglas.length > 1 ? '<option value="">Elige el tipo</option>' : '') +
+                siglas.map((s) => '<option value="' + s + '">' + s + '</option>').join('');
+            tipoSel.value = siglas.includes(previo) ? previo : (siglas.length === 1 ? siglas[0] : '');
+            tipoSel.disabled = !siglas.length;
+        }
+
+        function puntosDelTipo() {
+            const rack = rackActual();
+            if (!rack || !tipoSel.value) return [];
+            return rack.puntos.filter((p) => p[1] === tipoSel.value);
+        }
+
         function pintar() {
             const rack = rackActual();
             if (!rack) {
                 cont.innerHTML = '<div class="empty small">' + MV.icono('network') + 'Elige el rack para ver sus puntos.</div>';
+                nav.hidden = true;
                 seleccion.clear();
                 sincronizar();
                 return;
             }
+            // Se revisa el rack entero y no sólo la página a la vista: al cambiar de etapa, un punto
+            // elegido antes puede dejar de ser válido aunque ahora no se vea.
+            const validos = new Set(rack.puntos.filter((p) => seleccionable(estado(p).clase)).map((p) => p[0]));
+            Array.from(seleccion).forEach((id) => { if (!validos.has(id)) seleccion.delete(id); });
+
             if (!rack.puntos.length) {
                 cont.innerHTML = '<div class="empty small">' + MV.icono('info') +
                     'Este rack aún no tiene puntos cargados. Avísale a tu supervisor.</div>';
+                nav.hidden = true;
+                sincronizar();
                 return;
             }
-            const grupos = new Map();
-            rack.puntos.forEach((p) => {
-                const clave = p[3] == null ? 'sin' : p[3];
-                if (!grupos.has(clave)) grupos.set(clave, []);
-                grupos.get(clave).push(p);
-            });
-            const ids = new Set(rack.puntos.map((p) => p[0]));
-            Array.from(seleccion).forEach((id) => { if (!ids.has(id)) seleccion.delete(id); });
+            const puntos = puntosDelTipo();
+            if (!puntos.length) {
+                cont.innerHTML = '<div class="empty small">' + MV.icono('network') + 'Elige el tipo de red para ver sus números.</div>';
+                nav.hidden = true;
+                sincronizar();
+                return;
+            }
 
-            const claves = Array.from(grupos.keys()).sort((a, b) => (a === 'sin') - (b === 'sin') || a - b);
-            cont.innerHTML = claves.map((clave) => {
-                const puntos = grupos.get(clave);
-                let disponibles = 0;
-                const chips = puntos.map((p) => {
-                    const est = estado(p);
-                    if (!seleccionable(est.clase)) seleccion.delete(p[0]);
-                    else disponibles++;
-                    const elegido = seleccion.has(p[0]);
-                    return '<button type="button" class="pchip is-' + est.clase + (elegido ? ' is-sel' : '') + '"' +
-                        ' data-punto="' + p[0] + '"' + (seleccionable(est.clase) ? '' : ' disabled') +
-                        ' title="' + codigo(p) + (est.motivo ? ': ' + est.motivo : '') + '" aria-pressed="' + elegido + '">' +
-                        codigo(p) + '</button>';
-                }).join('');
-                const info = rack.paquetes[clave] || [];
-                const detalle = [info[1], info[0] ? info[0] + ' m' : ''].filter(Boolean).join(' · ');
-                return '<div class="paquete">' +
-                    '<div class="paquete-head"><b>' + (clave === 'sin' ? 'Sin paquete' : 'Paquete ' + String(clave).padStart(2, '0')) + '</b>' +
-                    '<span class="small muted">' + MV.escape(detalle) + (detalle ? ' · ' : '') + disponibles + ' disponible' + (disponibles === 1 ? '' : 's') + '</span>' +
-                    (disponibles ? '<button type="button" class="btn btn-ghost btn-sm" data-sel-paquete="' + clave + '">Todos</button>' : '') +
-                    '</div><div class="pchips">' + chips + '</div></div>';
+            const paginas = Math.ceil(puntos.length / POR_PAGINA);
+            pagina = Math.min(Math.max(pagina, 0), paginas - 1);
+            nav.hidden = paginas < 2;
+            if (paginas > 1) {
+                const desde = puntos[pagina * POR_PAGINA];
+                const hasta = puntos[Math.min((pagina + 1) * POR_PAGINA, puntos.length) - 1];
+                etiquetaPagina.textContent = String(desde[2]).padStart(3, '0') + '–' + String(hasta[2]).padStart(3, '0');
+            }
+
+            cont.innerHTML = puntos.slice(pagina * POR_PAGINA, (pagina + 1) * POR_PAGINA).map((p) => {
+                const est = estado(p);
+                if (!seleccionable(est.clase)) seleccion.delete(p[0]);
+                const elegido = seleccion.has(p[0]);
+                return '<button type="button" class="pchip is-' + est.clase + (elegido ? ' is-sel' : '') + '"' +
+                    ' data-punto="' + p[0] + '"' + (seleccionable(est.clase) ? '' : ' disabled') +
+                    ' title="' + codigo(p) + (est.motivo ? ': ' + est.motivo : '') + '" aria-pressed="' + elegido + '">' +
+                    String(p[2]).padStart(3, '0') + '</button>';
             }).join('');
             sincronizar();
         }
@@ -371,11 +397,9 @@
                 sincronizar();
                 return;
             }
-            const paquete = e.target.closest('[data-sel-paquete]');
-            if (paquete) {
-                const botones = Array.from(paquete.closest('.paquete').querySelectorAll('[data-punto]:not([disabled])'));
-                const todos = botones.every((b) => seleccion.has(Number(b.dataset.punto)));
-                botones.forEach((b) => { if (todos) seleccion.delete(Number(b.dataset.punto)); else seleccion.add(Number(b.dataset.punto)); });
+            const paso = e.target.closest('[data-pagina]');
+            if (paso) {
+                pagina += Number(paso.dataset.pagina);
                 pintar();
                 return;
             }
@@ -395,10 +419,14 @@
             rackSel.addEventListener('change', () => {
                 try { localStorage.setItem('mv-ultimo-rack', rackSel.value); } catch (e) { /* sin storage */ }
                 seleccion.clear();
+                pagina = 0;
+                llenarTipos();
                 pintar();
             });
         }
-        cajas.forEach((c) => c.addEventListener('change', pintar));
+        tipoSel.addEventListener('change', () => { pagina = 0; pintar(); });
+        if (etapaSel) etapaSel.addEventListener('change', pintar);
+        llenarTipos();
         pintar();
 
         return {

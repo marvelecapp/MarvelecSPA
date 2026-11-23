@@ -30,24 +30,10 @@
 
     {% include "marvelec_app/partials/rack_del_dia.html" with num=1 %}
 
-    <section class="card paso">
-        <div class="paso-titulo"><span class="paso-num">2</span> ¿Qué etapa terminaste?</div>
-        <div class="etapas-grid" role="group" aria-label="Etapas">
-            {% for valor, etiqueta in form.fields.etapas.choices %}
-            <label class="etapa-opcion etapa-{{ valor }}">
-                <input type="checkbox" name="etapas" value="{{ valor }}" {% if valor in form.etapas.value %}checked{% endif %}>
-                <span>{{ etiqueta }}</span>
-            </label>
-            {% endfor %}
-        </div>
-        <span class="help small muted">Puedes marcar varias si las hiciste en los mismos puntos (ej. ponchado en usuario + certificación).</span>
-        {{ form.etapas.errors }}
-    </section>
-
-    {% include "marvelec_app/partials/selector_puntos.html" with num=3 %}
+    {% include "marvelec_app/partials/selector_puntos.html" with num=2 con_etapas=True %}
 
     <section class="card paso">
-        <div class="paso-titulo"><span class="paso-num">4</span> Foto del avance <span class="muted small">(opcional)</span></div>
+        <div class="paso-titulo"><span class="paso-num">3</span> Foto del avance <span class="muted small">(opcional)</span></div>
         <label class="foto-picker {% if reporte.foto %}has-foto{% endif %}">
             {{ form.foto }}
             {% icono "camera" %}
@@ -62,7 +48,7 @@
     </section>
 
     <section class="card paso">
-        <div class="paso-titulo"><span class="paso-num">5</span> Comentarios o consultas</div>
+        <div class="paso-titulo"><span class="paso-num">4</span> Comentarios o consultas</div>
         {{ form.comentario }}
     </section>
 
