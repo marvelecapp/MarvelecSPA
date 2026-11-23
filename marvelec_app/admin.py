@@ -467,10 +467,11 @@ class IncidenciaAdmin(ModelAdmin):
 
 @admin.register(Asistencia)
 class AsistenciaAdmin(ModelAdmin):
-    list_display = ('trabajador_nombre', 'obra', 'fecha', 'hora_llegada', 'estado_label', 'foto_mini', 'gps')
+    list_display = ('trabajador_nombre', 'tipo', 'obra', 'fecha', 'hora_llegada', 'estado_label', 'foto_mini', 'gps')
     list_select_related = ('trabajador', 'obra')
     list_filter = (
-        ('estado', ChoicesDropdownFilter), ('obra', RelatedDropdownFilter), ('trabajador', RelatedDropdownFilter),
+        ('tipo', ChoicesDropdownFilter), ('estado', ChoicesDropdownFilter),
+        ('obra', RelatedDropdownFilter), ('trabajador', RelatedDropdownFilter),
     )
     list_filter_submit = True
     search_fields = ('trabajador__username', 'trabajador__first_name', 'trabajador__last_name')

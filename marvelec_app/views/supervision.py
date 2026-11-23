@@ -330,7 +330,7 @@ def _marcar_sin_asistencia(reportes):
         return
     confirmadas = set(Asistencia.objects.filter(
         trabajador_id__in={t for t, _ in claves}, fecha__in={f for _, f in claves},
-        estado=Asistencia.ESTADO_CONFIRMADA,
+        tipo=Asistencia.TIPO_ENTRADA, estado=Asistencia.ESTADO_CONFIRMADA,
     ).values_list('trabajador_id', 'fecha'))
     for r in reportes:
         r.sin_asistencia = (r.trabajador_id, timezone.localtime(r.fecha_hora).date()) not in confirmadas

@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
 from .. import consultas
 from ..forms import AsistenciaForm, IncidenciaForm, ReporteAvanceForm, obras_permitidas
@@ -28,10 +29,31 @@ def _mensajes_error(request, error):
         messages.error(request, mensaje)
 
 
+def _marcas_en_orden(marcas):
+    """[(clave, etiqueta, marca|None, se_puede_marcar)] en el orden de la jornada."""
+    etiquetas = dict(Asistencia.TIPO_CHOICES)
+    filas, habilitada = [], True
+    for clave in Asistencia.TIPOS_EN_ORDEN:
+        marca = marcas.get(clave)
+        pendiente = marca is None or marca.estado == Asistencia.ESTADO_RECHAZADA
+        filas.append((clave, etiquetas[clave], marca, habilitada and pendiente))
+        habilitada = habilitada and not pendiente
+    return filas
+
+
+def siguiente_marca(marcas):
+    """Primera marca de la jornada que el trabajador todavía puede registrar, o None si ya están todas."""
+    for clave, _, _, se_puede in _marcas_en_orden(marcas):
+        if se_puede:
+            return clave
+    return None
+
+
 @login_required
 def dashboard_trabajador(request):
     perfil = get_perfil(request.user)
     hoy = consultas.hoy_local()
+    marcas = consultas.marcas_del_dia(request.user, hoy)
     inicio_semana = hoy - timedelta(days=hoy.weekday())
     mis_reportes = ReporteAvance.objects.filter(trabajador=request.user)
     mis_avances = AvancePunto.objects.filter(reporte__trabajador=request.user)
@@ -39,7 +61,8 @@ def dashboard_trabajador(request):
     context = {
         'perfil': perfil,
         'hoy': hoy,
-        'asistencia_hoy': Asistencia.objects.filter(trabajador=request.user, fecha=hoy).first(),
+        'asistencia_hoy': marcas.get(Asistencia.TIPO_ENTRADA),
+        'marcas_hoy': _marcas_en_orden(marcas),
         'puntos_hoy': mis_avances.filter(reporte__fecha_hora__date=hoy).count(),
         'puntos_semana': mis_avances.filter(reporte__fecha_hora__date__gte=inicio_semana).count(),
         'reportes_semana': mis_reportes.filter(fecha_hora__date__gte=inicio_semana).count(),
@@ -134,25 +157,37 @@ def nueva_incidencia(request):
 
 @login_required
 def marcar_asistencia(request):
+    """Las cuatro marcas de la jornada: entrada, colación y salida, en orden y sin repetirse."""
     perfil = get_perfil(request.user)
     hoy = consultas.hoy_local()
-    asistencia_hoy = Asistencia.objects.filter(trabajador=request.user, fecha=hoy).first()
+    marcas = consultas.marcas_del_dia(request.user, hoy)
+    siguiente = siguiente_marca(marcas)
+
     if request.method == 'POST':
         form = AsistenciaForm(request.POST, request.FILES, obra_asignada=perfil.obra_asignada)
         if form.is_valid():
             d = form.cleaned_data
             try:
-                marcar(request.user, d['obra'], d['foto'], d['latitud'], d['longitud'], d.get('precision'))
-                messages.success(request, 'Llegada registrada. Tu supervisor la confirmará.')
+                asistencia, _ = marcar(request.user, d['obra'], d['foto'], d['tipo'],
+                                       d['latitud'], d['longitud'], d.get('precision'))
+                messages.success(request, f'{asistencia.get_tipo_display()} registrada a las '
+                                          f'{timezone.localtime(asistencia.hora):%H:%M}.')
                 return redirect('marvelec_app:panel_trabajador')
             except ValidationError as e:
                 _mensajes_error(request, e)
         else:
             messages.error(request, ' '.join(e for errores in form.errors.values() for e in errores))
+        marcas = consultas.marcas_del_dia(request.user, hoy)
+        siguiente = siguiente_marca(marcas)
     else:
-        form = AsistenciaForm(obra_asignada=perfil.obra_asignada)
+        form = AsistenciaForm(obra_asignada=perfil.obra_asignada, initial={'tipo': siguiente})
+
     return render(request, 'marvelec_app/trabajador/asistencia.html', {
-        'perfil': perfil, 'form': form, 'asistencia_hoy': asistencia_hoy, 'hoy': hoy,
+        'perfil': perfil, 'form': form, 'hoy': hoy,
+        'marcas': _marcas_en_orden(marcas),
+        'siguiente': siguiente,
+        'etiqueta_siguiente': dict(Asistencia.TIPO_CHOICES).get(siguiente, ''),
+        'entrada_hoy': marcas.get(Asistencia.TIPO_ENTRADA),
     })
 
 

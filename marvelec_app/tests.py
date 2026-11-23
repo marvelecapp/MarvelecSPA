@@ -346,7 +346,7 @@ class IncidenciaTests(BaseEscenario):
 
     def setUp(self):
         super().setUp()
-        self.sin_canalizacion = TipoIncidencia.objects.get(nombre='Sin canalización')
+        self.sin_canalizacion = TipoIncidencia.objects.get(nombre='Error canalización (lugar o posición errado)')
 
     def _post(self, **extra):
         datos = {'rack': self.rack_a.pk, 'codigos': 'DT 1-2', 'tipo': self.sin_canalizacion.pk,
@@ -411,6 +411,27 @@ class AsistenciaTests(BaseEscenario):
         a = Asistencia.objects.get()
         self.assertEqual((a.estado, a.fecha, a.precision), (Asistencia.ESTADO_PENDIENTE, consultas.hoy_local(), 12))
         self.assertEqual(self._marcar().status_code, 400)
+
+    def test_las_cuatro_marcas_van_en_orden_y_no_se_repiten(self):
+        self._login("trab_a")
+        # No se puede saltar a la colación sin haber marcado la entrada.
+        r = self._marcar(tipo=Asistencia.TIPO_INICIO_COLACION)
+        self.assertEqual(r.status_code, 400)
+        self.assertIn('entrada', r.json()['mensaje'].lower())
+
+        for tipo in Asistencia.TIPOS_EN_ORDEN:
+            self.assertEqual(self._marcar(tipo=tipo).status_code, 201, tipo)
+        self.assertEqual(Asistencia.objects.filter(trabajador=self.trab_a).count(), 4)
+
+        # Ninguna se puede volver a marcar el mismo día.
+        for tipo in Asistencia.TIPOS_EN_ORDEN:
+            self.assertEqual(self._marcar(tipo=tipo).status_code, 400, tipo)
+
+        # Las jornadas del ranking cuentan el día una vez, no cuatro.
+        Asistencia.objects.filter(trabajador=self.trab_a).update(estado=Asistencia.ESTADO_CONFIRMADA)
+        self._avance(self.trab_a, ['DT-001'], ['tendido'])
+        fila = consultas.ranking_trabajadores(ReporteAvance.objects.all())[0]
+        self.assertEqual(fila['jornadas_asistencia'], 1)
 
     def test_foto_obligatoria(self):
         self._login("trab_a")
@@ -574,7 +595,7 @@ class IndicadoresTests(BaseEscenario):
         datos = consultas.datos_selector(Obra.objects.filter(pk=self.obra_a.pk))
         rack = datos['racks'][0]
         puntos = {(p[1], p[2]): p for p in rack['puntos']}
-        self.assertEqual(puntos[('DT', 1)][4], 0b11)  # tendido y bajada
+        self.assertEqual(puntos[('DT', 1)][4], 0b110)  # tendido y bajada (el bit 0 es armado)
         self.assertEqual(puntos[('DT', 2)][5], 1)  # bloqueado
         self.assertEqual(rack['paquetes'][1], [36, 'Sótano 1'])
 
@@ -671,7 +692,7 @@ class ExcelTests(BaseEscenario):
         self.assertEqual(ws.max_row, 1 + 7)  # encabezado + puntos del rack 1H
         fila = [c.value for c in ws[2]]
         self.assertEqual(fila[4], 'DT-001')
-        self.assertEqual(fila[7], 'Pedro Soto')  # quién hizo el tendido
+        self.assertEqual(fila[9], 'Pedro Soto')  # quién hizo el tendido (armado ocupa 6 y 7)
 
 
     def test_mes_invalido_cae_al_mes_actual(self):

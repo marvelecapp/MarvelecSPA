@@ -341,10 +341,11 @@ def liberar_incidencia(incidencia, usuario, comentario=''):
 # Asistencia
 # =========================================================
 
-def marcar_asistencia(usuario, obra, foto, latitud=None, longitud=None, precision=None,
-                      uuid_cliente=None, fecha_cliente=None, offline=False):
+def marcar_asistencia(usuario, obra, foto, tipo=Asistencia.TIPO_ENTRADA, latitud=None, longitud=None,
+                      precision=None, uuid_cliente=None, fecha_cliente=None, offline=False):
     """
-    Registra la llegada del día. Una por día; si la del día fue rechazada, se puede volver a marcar.
+    Registra una marca de la jornada: entrada, colación o salida.
+    Van en orden y no se sobrescriben; una rechazada sí se puede volver a marcar.
     Devuelve (asistencia, creada).
     """
     if uuid_cliente:
@@ -354,13 +355,21 @@ def marcar_asistencia(usuario, obra, foto, latitud=None, longitud=None, precisio
 
     hora = leer_fecha_cliente(fecha_cliente)
     fecha = timezone.localdate(hora)
-    previa = Asistencia.objects.filter(trabajador=usuario, fecha=fecha).first()
+    marcas = {a.tipo: a for a in Asistencia.objects.filter(trabajador=usuario, fecha=fecha)}
+    etiquetas = dict(Asistencia.TIPO_CHOICES)
+
+    previa = marcas.get(tipo)
     if previa and previa.estado != Asistencia.ESTADO_RECHAZADA:
         raise ValidationError(
-            f'Ya marcaste tu llegada el {fecha:%d-%m} a las {timezone.localtime(previa.hora):%H:%M}.'
+            f'Ya marcaste {etiquetas[tipo].lower()} el {fecha:%d-%m} '
+            f'a las {timezone.localtime(previa.hora):%H:%M}.'
         )
+    for anterior in Asistencia.TIPOS_EN_ORDEN[:Asistencia.TIPOS_EN_ORDEN.index(tipo)]:
+        marca = marcas.get(anterior)
+        if marca is None or marca.estado == Asistencia.ESTADO_RECHAZADA:
+            raise ValidationError(f'Primero tienes que marcar {etiquetas[anterior].lower()}.')
 
-    asistencia = previa or Asistencia(trabajador=usuario, fecha=fecha)
+    asistencia = previa or Asistencia(trabajador=usuario, fecha=fecha, tipo=tipo)
     asistencia.obra = obra
     asistencia.hora = hora
     asistencia.foto = foto
@@ -375,10 +384,11 @@ def marcar_asistencia(usuario, obra, foto, latitud=None, longitud=None, precisio
         with transaction.atomic():
             asistencia.save()
     except IntegrityError:
-        existente = uuid_cliente and Asistencia.objects.filter(uuid_cliente=uuid_cliente).first()
+        existente = uuid_cliente and Asistencia.objects.filter(uuid_cliente=uuid_cliente,
+                                                               trabajador=usuario).first()
         if existente:
             return existente, False
-        raise ValidationError('Ya marcaste tu llegada hoy.')
+        raise ValidationError(f'Ya marcaste {etiquetas[tipo].lower()} hoy.')
     return asistencia, True
 
 

@@ -369,7 +369,7 @@ body.is-offline .net-status { display: flex; }
 }
 .hero h1 { font-size: 1.35rem; }
 .hero p { opacity: .85; font-size: .9rem; }
-.hero-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px; }
+.hero-stats { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 10px; margin-top: 18px; }
 .hero-stat { background: rgba(255, 255, 255, .14); border-radius: 12px; padding: 10px 12px; }
 .hero-stat b { display: block; font-size: 1.45rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 .hero-stat span { font-size: .72rem; opacity: .85; }
@@ -907,6 +907,34 @@ code { font-size: .85em; padding: 1px 5px; border-radius: 5px; background: var(-
     background: var(--brand-50); color: var(--brand-text); font-size: .84rem; font-weight: 650;
 }
 .chat-adjunto .btn { margin-left: auto; }
+
+/* =========================================================
+   JORNADA (entrada · colación · salida)
+   ========================================================= */
+.jornada { display: grid; gap: 2px; }
+.jornada-paso { display: flex; align-items: center; gap: 12px; padding: 10px 4px; }
+.jornada-paso + .jornada-paso { border-top: 1px solid var(--border); }
+.jornada-icono { display: grid; place-items: center; width: 34px; height: 34px; flex-shrink: 0;
+    border-radius: 50%; background: var(--surface-2); color: var(--muted); }
+.jornada-paso.is-hecha .jornada-icono { background: var(--ok-50, var(--surface-2)); color: var(--ok, var(--brand)); }
+.jornada-paso.is-ahora .jornada-icono { background: var(--brand); color: #fff; }
+.jornada-body { display: grid; gap: 1px; }
+.jornada-body small { font-size: .78rem; color: var(--muted); }
+.jornada-paso.is-ahora .jornada-body b { color: var(--brand-text); }
+
+.jornada-resumen { display: block; color: inherit; text-decoration: none; }
+.jornada-resumen .card-header { margin-bottom: 8px; }
+.jornada-fila { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.jornada-chip {
+    display: grid; gap: 1px; padding: 8px 4px; border-radius: 10px; text-align: center;
+    background: var(--surface-2); border: 1px solid var(--border);
+}
+.jornada-chip b { font-size: .72rem; font-weight: 700; line-height: 1.15; }
+.jornada-chip small { font-size: .74rem; color: var(--muted); }
+.jornada-chip.is-hecha { border-color: var(--brand-400); }
+.jornada-chip.is-hecha small { color: var(--brand-text); font-weight: 700; }
+.jornada-chip.is-ahora { background: var(--brand); border-color: transparent; }
+.jornada-chip.is-ahora b, .jornada-chip.is-ahora small { color: #fff; }
 
 /* Utilidades de espaciado */
 .mt-0 { margin-top: 0; } .mt-1 { margin-top: 6px; } .mt-2 { margin-top: 12px; } .mt-3 { margin-top: 20px; } .mt-4 { margin-top: 28px; }

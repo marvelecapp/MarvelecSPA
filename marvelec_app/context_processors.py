@@ -25,7 +25,8 @@ def app(request):
         datos['incidencias_abiertas'] = incidencias_visibles(perfil).filter(
             estado=Incidencia.ESTADO_ABIERTA
         ).count()
-        asistencias = Asistencia.objects.filter(fecha=hoy_local(), estado=Asistencia.ESTADO_PENDIENTE)
+        asistencias = Asistencia.objects.filter(fecha=hoy_local(), tipo=Asistencia.TIPO_ENTRADA,
+                                                estado=Asistencia.ESTADO_PENDIENTE)
         fija = obra_fija(perfil)
         datos['asistencias_pendientes'] = (asistencias.filter(obra_id=fija) if fija else asistencias).count()
     return datos

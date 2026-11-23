@@ -2,7 +2,7 @@
 from django import forms
 
 from . import etapas
-from .models import Obra, Punto, Rack, ReporteAvance, TipoIncidencia
+from .models import Asistencia, Obra, Punto, Rack, ReporteAvance, TipoIncidencia
 from .servicios import leer_coordenada, resolver_codigos
 
 AYUDA_CODIGOS = 'DT 1-2-3-17, VD 9'
@@ -110,9 +110,13 @@ class IncidenciaForm(SeleccionPuntosMixin, forms.Form):
 
 class AsistenciaForm(forms.Form):
     obra = forms.ModelChoiceField(queryset=Obra.objects.none(), empty_label='Selecciona la obra')
+    # Sin valor se asume la entrada: los celulares con registros guardados sin señal antes de
+    # este cambio los envían sin `tipo`.
+    tipo = forms.ChoiceField(choices=Asistencia.TIPO_CHOICES, initial=Asistencia.TIPO_ENTRADA,
+                             required=False, widget=forms.HiddenInput)
     foto = forms.ImageField(
         widget=forms.FileInput(attrs={'capture': 'environment', 'accept': 'image/*'}),
-        error_messages={'required': 'La foto del lugar es obligatoria para marcar tu llegada.'},
+        error_messages={'required': 'La foto del lugar es obligatoria para registrar la marca.'},
     )
     latitud = forms.CharField(required=False, widget=forms.HiddenInput)
     longitud = forms.CharField(required=False, widget=forms.HiddenInput)
@@ -126,6 +130,7 @@ class AsistenciaForm(forms.Form):
 
     def clean(self):
         cleaned = super().clean()
+        cleaned['tipo'] = cleaned.get('tipo') or Asistencia.TIPO_ENTRADA
         cleaned['latitud'] = leer_coordenada(cleaned.get('latitud'), 90)
         cleaned['longitud'] = leer_coordenada(cleaned.get('longitud'), 180)
         return cleaned

@@ -286,8 +286,10 @@ def ranking_trabajadores(reportes, desde=None, hasta=None):
         r['por_etapa'][f['etapa']] = f['n']
         r['equivalente'] += f['n'] / etapas.POR_CLAVE[f['etapa']].estandar
 
+    # Sólo la entrada: con las cuatro marcas de la jornada cada día contaría cuatro veces.
     asistencias = Asistencia.objects.filter(
-        trabajador_id__in=por_trabajador, estado=Asistencia.ESTADO_CONFIRMADA
+        trabajador_id__in=por_trabajador, tipo=Asistencia.TIPO_ENTRADA,
+        estado=Asistencia.ESTADO_CONFIRMADA,
     )
     if desde:
         asistencias = asistencias.filter(fecha__gte=desde)
@@ -481,13 +483,15 @@ def historial_punto(punto):
 # =========================================================
 
 def asistencia_del_dia(perfil, fecha, obra_id=None):
-    """[(perfil_trabajador, asistencia | None)] de los trabajadores a cargo."""
+    """[(perfil_trabajador, entrada | None)] de los trabajadores a cargo. Sólo la marca de entrada:
+    es la que el supervisor revisa y la que significa "llegó"."""
     a_cargo = trabajadores_de(perfil)
     if obra_id:
         a_cargo = a_cargo.filter(obra_asignada_id=obra_id)
     marcas = {
         a.trabajador_id: a for a in
-        Asistencia.objects.filter(fecha=fecha, trabajador__in=[p.usuario_id for p in a_cargo])
+        Asistencia.objects.filter(fecha=fecha, tipo=Asistencia.TIPO_ENTRADA,
+                                  trabajador__in=[p.usuario_id for p in a_cargo])
         .select_related('obra', 'revisado_por')
     }
     return [(p, marcas.get(p.usuario_id)) for p in a_cargo]
@@ -498,7 +502,8 @@ def asistencia_mensual(perfil, anio, mes, obra_id=None):
     dias = [date(anio, mes, d) for d in range(1, calendar.monthrange(anio, mes)[1] + 1)]
     a_cargo = list(trabajadores_de(perfil).filter(obra_asignada_id=obra_id) if obra_id else trabajadores_de(perfil))
     marcas = defaultdict(dict)
-    for a in Asistencia.objects.filter(trabajador__in=[p.usuario_id for p in a_cargo], fecha__in=dias):
+    for a in Asistencia.objects.filter(trabajador__in=[p.usuario_id for p in a_cargo], fecha__in=dias,
+                                       tipo=Asistencia.TIPO_ENTRADA):
         marcas[a.trabajador_id][a.fecha] = a
     filas = []
     for p in a_cargo:
@@ -514,5 +519,11 @@ def asistencia_mensual(perfil, anio, mes, obra_id=None):
 
 def asistencia_confirmada(trabajador_id, fecha):
     return Asistencia.objects.filter(
-        trabajador_id=trabajador_id, fecha=fecha, estado=Asistencia.ESTADO_CONFIRMADA
+        trabajador_id=trabajador_id, fecha=fecha, tipo=Asistencia.TIPO_ENTRADA,
+        estado=Asistencia.ESTADO_CONFIRMADA,
     ).exists()
+
+
+def marcas_del_dia(usuario, fecha):
+    """{tipo: asistencia} de la jornada del trabajador, para saber qué puede marcar ahora."""
+    return {a.tipo: a for a in Asistencia.objects.filter(trabajador=usuario, fecha=fecha)}

@@ -9,25 +9,22 @@
         <div class="hero-stats">
             <div class="hero-stat"><b>{{ puntos_hoy }}</b><span>puntos hoy</span></div>
             <div class="hero-stat"><b>{{ puntos_semana }}</b><span>puntos semana</span></div>
-            <div class="hero-stat"><b>{{ reportes_semana }}</b><span>reportes semana</span></div>
         </div>
-        {% if not asistencia_hoy or asistencia_hoy.estado == "rechazada" %}
-        <a href="{% url 'marvelec_app:marcar_asistencia' %}" class="btn btn-accent btn-lg btn-block">
-            {% icono "camera" %} {% if asistencia_hoy %}Volver a marcar llegada{% else %}Marcar llegada{% endif %}
-        </a>
-        {% else %}
-        <div class="hero-llegada">
-            {% icono "check-circle" %}
-            <span>Llegada {{ asistencia_hoy.hora|time:"H:i" }} · {% if asistencia_hoy.estado == "confirmada" %}confirmada{% else %}por confirmar{% endif %}</span>
-        </div>
-        <a href="{% url 'marvelec_app:nuevo_reporte' %}" class="btn btn-accent btn-lg btn-block">
-            {% icono "plus" %} Reportar avance
-        </a>
-        {% endif %}
     </section>
 
+    <a href="{% url 'marvelec_app:marcar_asistencia' %}" class="card jornada-resumen">
+        <div class="card-header"><h3>{% icono "clock" %} Mi jornada</h3>{% icono "chevron-right" "icon-sm" %}</div>
+        <div class="jornada-fila">
+            {% for clave, etiqueta, marca, se_puede in marcas_hoy %}
+            <span class="jornada-chip {% if marca and marca.estado != 'rechazada' %}is-hecha{% elif se_puede %}is-ahora{% endif %}">
+                <b>{{ etiqueta }}</b>
+                <small>{% if marca and marca.estado != 'rechazada' %}{{ marca.hora|time:"H:i" }}{% elif se_puede %}marcar{% else %}—{% endif %}</small>
+            </span>
+            {% endfor %}
+        </div>
+    </a>
+
     <div class="acciones-rapidas">
-        <a href="{% url 'marvelec_app:nuevo_reporte' %}" class="accion">{% icono "network" %}<span>Avance</span></a>
         <a href="{% url 'marvelec_app:nueva_incidencia' %}" class="accion accion-danger">{% icono "alert" %}<span>Incidencia</span></a>
         <a href="{% url 'marvelec_app:historial_trabajador' %}?ver=llegadas" class="accion">{% icono "calendar" %}<span>Mis llegadas</span></a>
     </div>

@@ -418,7 +418,24 @@ class Incidencia(models.Model):
 # =========================================================
 
 class Asistencia(models.Model):
-    """Marca de llegada a la obra (foto del lugar). El supervisor la confirma o la rechaza."""
+    """
+    Marca de jornada en la obra, con foto del lugar: entrada, colación y salida.
+    Sólo la ENTRADA pasa por la revisión del supervisor; las otras tres son la hora y su respaldo,
+    para no obligar a revisar cuatro marcas por persona y por día.
+    """
+    TIPO_ENTRADA = 'entrada'
+    TIPO_INICIO_COLACION = 'inicio_colacion'
+    TIPO_FIN_COLACION = 'fin_colacion'
+    TIPO_SALIDA = 'salida'
+    TIPO_CHOICES = [
+        (TIPO_ENTRADA, 'Entrada'),
+        (TIPO_INICIO_COLACION, 'Inicio colación'),
+        (TIPO_FIN_COLACION, 'Fin colación'),
+        (TIPO_SALIDA, 'Salida'),
+    ]
+    # El orden es el de la jornada: no se puede marcar una sin tener las anteriores.
+    TIPOS_EN_ORDEN = (TIPO_ENTRADA, TIPO_INICIO_COLACION, TIPO_FIN_COLACION, TIPO_SALIDA)
+
     ESTADO_PENDIENTE = 'pendiente'
     ESTADO_CONFIRMADA = 'confirmada'
     ESTADO_RECHAZADA = 'rechazada'
@@ -431,8 +448,10 @@ class Asistencia(models.Model):
     trabajador = models.ForeignKey(User, on_delete=models.PROTECT, related_name='asistencias')
     obra = models.ForeignKey(Obra, on_delete=models.PROTECT, related_name='asistencias')
     fecha = models.DateField(db_index=True)
-    hora = models.DateTimeField(default=timezone.now, verbose_name="Hora de llegada")
-    foto = models.ImageField(upload_to='asistencia/%Y/%m/', verbose_name="Foto de llegada")
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default=TIPO_ENTRADA, db_index=True,
+                            verbose_name="Marca")
+    hora = models.DateTimeField(default=timezone.now, verbose_name="Hora")
+    foto = models.ImageField(upload_to='asistencia/%Y/%m/', verbose_name="Foto del lugar")
     latitud = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitud = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     precision = models.PositiveIntegerField(null=True, blank=True, help_text="Precisión del GPS en metros.")
@@ -450,13 +469,13 @@ class Asistencia(models.Model):
     class Meta:
         verbose_name = "Asistencia"
         verbose_name_plural = "Asistencias"
-        ordering = ['-fecha', 'trabajador__first_name']
+        ordering = ['-fecha', 'trabajador__first_name', 'hora']
         constraints = [
-            models.UniqueConstraint(fields=['trabajador', 'fecha'], name='una_asistencia_por_dia'),
+            models.UniqueConstraint(fields=['trabajador', 'fecha', 'tipo'], name='una_marca_por_tipo_y_dia'),
         ]
 
     def __str__(self):
-        return f"{_nombre(self.trabajador)} · {self.fecha:%d-%m-%Y}"
+        return f"{_nombre(self.trabajador)} · {self.get_tipo_display()} {self.fecha:%d-%m-%Y}"
 
     @property
     def url_mapa(self):

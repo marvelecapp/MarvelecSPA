@@ -108,12 +108,14 @@ def api_asistencia(request):
     d = form.cleaned_data
     try:
         asistencia, creada = marcar_asistencia(
-            request.user, d['obra'], d['foto'], d['latitud'], d['longitud'], d.get('precision'), **_envio(request),
+            request.user, d['obra'], d['foto'], d['tipo'], d['latitud'], d['longitud'], d.get('precision'),
+            **_envio(request),
         )
     except ValidationError as e:
         return JsonResponse({'ok': False, 'mensaje': ' '.join(e.messages)}, status=400)
 
     return JsonResponse({
         'ok': True, 'duplicado': not creada, 'id': asistencia.pk, 'estado': asistencia.estado,
+        'tipo': asistencia.tipo, 'etiqueta': asistencia.get_tipo_display(),
         'fecha': asistencia.fecha.isoformat(),
     }, status=201 if creada else 200)

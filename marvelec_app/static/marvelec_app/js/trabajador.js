@@ -454,14 +454,18 @@
             }
         } else if (tipoForm === 'asistencia') {
             const obra = form.querySelector('[name=obra]');
+            const marca = form.querySelector('[name=tipo]');
             if (!obra || !obra.value) { MV.toast('Selecciona la obra.', 'warning'); return null; }
-            if (!fotoLista) { MV.toast('Toma la foto del lugar para marcar tu llegada.', 'warning'); return null; }
+            if (!fotoLista) { MV.toast('Toma la foto del lugar para marcar.', 'warning'); return null; }
             campos.obra = obra.value;
+            campos.tipo = marca ? marca.value : 'entrada';
             campos.latitud = valorCampo('latitud');
             campos.longitud = valorCampo('longitud');
             campos.precision = valorCampo('precision');
             const nombreObra = obra.dataset.nombre || (obra.options ? obra.options[obra.selectedIndex].text : '');
-            resumen = { titulo: 'Llegada', detalle: nombreObra, icono: 'calendar' };
+            const boton = form.querySelector('[type=submit]');
+            resumen = { titulo: boton ? boton.textContent.trim() : 'Marca de jornada',
+                detalle: nombreObra, icono: 'calendar' };
         }
         return {
             uuid: (crypto.randomUUID && crypto.randomUUID()) ||
@@ -480,7 +484,10 @@
     }
 
     function mensajeExito(data) {
-        if (tipoForm === 'asistencia') return 'Llegada registrada. Tu supervisor la confirmará.';
+        if (tipoForm === 'asistencia') {
+            return (data.etiqueta || 'Marca') + ' registrada' +
+                (data.tipo === 'entrada' ? '. Tu supervisor la confirmará.' : '.');
+        }
         if (tipoForm === 'incidencia') {
             return 'Incidencia registrada en ' + data.n + ' punto' + (data.n === 1 ? '' : 's') + '. Se avisó al supervisor.';
         }

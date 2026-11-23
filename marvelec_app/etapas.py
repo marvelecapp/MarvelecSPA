@@ -20,10 +20,14 @@ class Etapa:
 
 
 ETAPAS = (
+    # Se arma en taller con la enrolladora, por paquete y por otra gente: va primero en el proceso,
+    # pero no se exige para tender, o la cuadrilla en terreno queda bloqueada por un registro ajeno.
+    # 16 paquetes por jornada entre 2 personas y ~22 puntos por paquete (350 puntos / 16 paquetes).
+    Etapa('armado', 'Armado de paquete', 'Armado', (), 175.0),
     Etapa('tendido', 'Tendido', 'Tendido', (), round(80 / 3, 1)),
     Etapa('bajada', 'Bajada de puntos', 'Bajada', ('tendido',), round(50 / 3, 1)),
     Etapa('peinado', 'Peinado de rack', 'Peinado', ('tendido',), round(350 / 2 / 3, 1)),
-    Etapa('identificacion', 'Identificación (tonos)', 'Identif.', ('bajada', 'peinado'), 50.0),
+    Etapa('identificacion', 'Identificación puntos', 'Identif.', ('bajada', 'peinado'), 50.0),
     Etapa('ponchado_rack', 'Ponchado en rack', 'P. rack', ('identificacion',), 70.0),
     Etapa('ponchado_usuario', 'Ponchado en usuario', 'P. usuario', ('identificacion',), 60.0),
     Etapa('certificacion', 'Certificación', 'Certif.', ('ponchado_rack', 'ponchado_usuario'), 65.0),
