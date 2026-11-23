@@ -484,6 +484,32 @@ class Asistencia(models.Model):
         return f'https://www.openstreetmap.org/?mlat={self.latitud}&mlon={self.longitud}#map=18/{self.latitud}/{self.longitud}'
 
 
+class AsignacionDiaria(models.Model):
+    """
+    Qué rack y qué puntos trabaja un grupo de personas un día. El rack es el mismo por jornada,
+    así que el trabajador ya no lo elige: lo ve como información y no se equivoca de rack.
+    Sin puntos marcados vale el rack completo, para no obligar al admin a elegirlos cada mañana.
+    """
+    fecha = models.DateField(default=timezone.localdate, db_index=True)
+    rack = models.ForeignKey(Rack, on_delete=models.CASCADE, related_name='asignaciones')
+    trabajadores = models.ManyToManyField(User, related_name='asignaciones', verbose_name="Trabajadores")
+    puntos = models.ManyToManyField(
+        Punto, blank=True, related_name='asignaciones', verbose_name="Puntos asignados",
+        help_text="Si no eliges ninguno, vale el rack completo.",
+    )
+    creada_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='asignaciones_creadas')
+    creada = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Asignación de trabajo"
+        verbose_name_plural = "Asignaciones de trabajo"
+        ordering = ['-fecha', 'rack__nombre']
+
+    def __str__(self):
+        return f"{self.fecha:%d-%m-%Y} · Rack {self.rack.nombre}"
+
+
 # =========================================================
 # CHAT DE CONSULTAS
 # =========================================================

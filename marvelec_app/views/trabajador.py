@@ -75,12 +75,19 @@ def dashboard_trabajador(request):
     return render(request, 'marvelec_app/trabajador/inicio.html', context)
 
 
-def _contexto_selector(perfil, form, reporte=None):
+def _contexto_selector(perfil, form, reporte=None, asignacion=None):
+    """El rack sale de la asignación del día; al corregir, del reporte que se corrige."""
+    rack_fijo = reporte.rack if reporte else (asignacion.rack if asignacion else None)
+    if rack_fijo:
+        form.fields['rack'].initial = rack_fijo.pk
     return {
         'perfil': perfil,
         'form': form,
         'selector': consultas.datos_selector(obras_permitidas(perfil.obra_asignada), excluir_reporte=reporte),
         'reporte': reporte,
+        'asignacion': asignacion,
+        'rack_fijo': rack_fijo,
+        'puntos_asignados': [p.pk for p in asignacion.puntos.all()] if asignacion else [],
     }
 
 
@@ -102,7 +109,8 @@ def nuevo_reporte(request):
             messages.error(request, 'Revisa los datos del reporte.')
     else:
         form = ReporteAvanceForm(obra_asignada=perfil.obra_asignada)
-    return render(request, 'marvelec_app/trabajador/nuevo_reporte.html', _contexto_selector(perfil, form))
+    return render(request, 'marvelec_app/trabajador/nuevo_reporte.html',
+                  _contexto_selector(perfil, form, asignacion=consultas.asignacion_de(request.user)))
 
 
 @login_required
@@ -152,7 +160,8 @@ def nueva_incidencia(request):
             messages.error(request, 'Revisa los datos de la incidencia.')
     else:
         form = IncidenciaForm(obra_asignada=perfil.obra_asignada)
-    return render(request, 'marvelec_app/trabajador/incidencia.html', _contexto_selector(perfil, form))
+    return render(request, 'marvelec_app/trabajador/incidencia.html',
+                  _contexto_selector(perfil, form, asignacion=consultas.asignacion_de(request.user)))
 
 
 @login_required

@@ -15,9 +15,9 @@ from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationFo
 
 from . import etapas
 from .models import (
-    Asistencia, AvancePunto, Conversacion, Incidencia, Mensaje, Notificacion, Obra, Paquete,
-    PerfilTrabajador, Punto, Rack, ReporteAvance, ResumenDiarioEnviado, SuscripcionPush, TipoIncidencia,
-    TipoPunto, Zona,
+    AsignacionDiaria, Asistencia, AvancePunto, Conversacion, Incidencia, Mensaje, Notificacion, Obra,
+    Paquete, PerfilTrabajador, Punto, Rack, ReporteAvance, ResumenDiarioEnviado, SuscripcionPush,
+    TipoIncidencia, TipoPunto, Zona,
 )
 from .servicios import liberar_incidencia, revisar_asistencia, revisar_reporte
 
@@ -402,6 +402,36 @@ class ReporteAvanceAdmin(ModelAdmin):
             revisar_reporte(reporte, request.user, 'aprobar')
             n += 1
         self.message_user(request, f'{n} reporte(s) aprobados; se avisó a cada trabajador.', messages.SUCCESS)
+
+
+@admin.register(AsignacionDiaria)
+class AsignacionDiariaAdmin(ModelAdmin):
+    """Asignar trabajo: qué rack y qué puntos toca hoy, y quiénes van."""
+    list_display = ('fecha', 'rack', 'quienes', 'cuantos_puntos')
+    list_select_related = ('rack__obra',)
+    list_filter = (('rack', RelatedDropdownFilter),)
+    date_hierarchy = 'fecha'
+    autocomplete_fields = ('rack',)
+    filter_horizontal = ('trabajadores', 'puntos')
+    readonly_fields = ('creada_por', 'creada')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related('trabajadores', 'puntos')
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.creada_por = request.user
+        super().save_model(request, obj, form, change)
+
+    @display(description='Trabajadores')
+    def quienes(self, obj):
+        nombres = [u.get_full_name() or u.username for u in obj.trabajadores.all()]
+        return ', '.join(nombres) or '—'
+
+    @display(description='Puntos')
+    def cuantos_puntos(self, obj):
+        n = len(obj.puntos.all())
+        return f'{n} elegidos' if n else 'Rack completo'
 
 
 # ---------- TERRENO: INCIDENCIAS Y ASISTENCIA ----------

@@ -345,6 +345,7 @@ def cola_revision(request):
     ).exclude(trabajador=request.user).prefetch_related('avances__punto__tipo').order_by('fecha_hora')
     pagina = Paginator(pendientes, 20).get_page(request.GET.get('page'))
     _marcar_sin_asistencia(pagina.object_list)
+    consultas.reportes_sin_asignacion(pagina.object_list)
     return render(request, 'marvelec_app/supervision/revisar.html', {
         **_contexto_filtros(perfil, filtros),
         'pagina': pagina,

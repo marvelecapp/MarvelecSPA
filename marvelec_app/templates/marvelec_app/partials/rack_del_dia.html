@@ -1,0 +1,27 @@
+{% load marvelec_tags %}
+{% comment %}
+El rack ya no se elige: viene de la asignación del día (o del reporte que se corrige).
+Sin asignación vuelve el selector, para que un olvido del admin no deje a nadie sin reportar.
+{% endcomment %}
+{% if rack_fijo %}
+<input type="hidden" name="rack" value="{{ rack_fijo.pk }}">
+<section class="card row rack-dia">
+    {% icono "dns" %}
+    <span>
+        <b>Rack {{ rack_fijo.nombre }}</b>
+        <small>
+            {% if asignacion %}
+                Asignado para hoy{% if puntos_asignados %} · {{ puntos_asignados|length }} punto{{ puntos_asignados|length|pluralize }}{% endif %}
+            {% else %}
+                Del reporte que estás corrigiendo
+            {% endif %}
+        </small>
+    </span>
+</section>
+{% else %}
+<section class="card paso">
+    <div class="paso-titulo"><span class="paso-num">{{ num }}</span> Rack</div>
+    <div class="field">{{ form.rack }}{{ form.rack.errors }}</div>
+    <span class="help small muted">Nadie te asignó trabajo hoy: elige el rack en el que estás.</span>
+</section>
+{% endif %}

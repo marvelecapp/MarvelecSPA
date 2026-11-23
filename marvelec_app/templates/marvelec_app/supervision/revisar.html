@@ -46,6 +46,7 @@
                 <div class="row">
                     {% icono "pin" "icon-sm" %}<span><b>Rack {{ reporte.rack.nombre }}</b> · {{ reporte.obra.nombre }}</span>
                     {% if reporte.sin_asistencia %}<span class="badge badge-pendiente" title="El trabajador no tiene la llegada de ese día confirmada">{% icono "alert" "icon-sm" %} Sin asistencia confirmada</span>{% endif %}
+                    {% if reporte.sin_asignacion %}<span class="badge badge-pendiente" title="Ese día nadie le asignó este rack">{% icono "alert" "icon-sm" %} Sin asignación</span>{% endif %}
                 </div>
                 <div class="row">
                     <span class="pts" style="font-size:1.3rem">{{ reporte.total_puntos }} pts</span>

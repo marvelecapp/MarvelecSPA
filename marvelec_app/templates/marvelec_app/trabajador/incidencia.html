@@ -18,10 +18,7 @@
 
     {% if form.non_field_errors %}<div class="banner banner-danger">{{ form.non_field_errors }}</div>{% endif %}
 
-    <section class="card paso">
-        <div class="paso-titulo"><span class="paso-num">1</span> Rack</div>
-        <div class="field">{{ form.rack }}{{ form.rack.errors }}</div>
-    </section>
+    {% include "marvelec_app/partials/rack_del_dia.html" with num=1 %}
 
     {% include "marvelec_app/partials/selector_puntos.html" with num=2 titulo="¿Qué puntos están afectados?" %}
 

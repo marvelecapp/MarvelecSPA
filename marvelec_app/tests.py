@@ -16,8 +16,9 @@ from django.utils import timezone
 
 from . import consultas, etapas, importador
 from .models import (
-    Asistencia, AvancePunto, Conversacion, Incidencia, Mensaje, Notificacion, Obra, Paquete, PerfilTrabajador,
-    Punto, Rack, ReporteAvance, ResumenDiarioEnviado, SuscripcionPush, TipoIncidencia, TipoPunto, Zona,
+    AsignacionDiaria, Asistencia, AvancePunto, Conversacion, Incidencia, Mensaje, Notificacion, Obra,
+    Paquete, PerfilTrabajador, Punto, Rack, ReporteAvance, ResumenDiarioEnviado, SuscripcionPush,
+    TipoIncidencia, TipoPunto, Zona,
 )
 from .servicios import parsear_codigos, resolver_codigos
 
@@ -600,6 +601,38 @@ class IndicadoresTests(BaseEscenario):
         self.assertEqual(rack['paquetes'][1], [36, 'Sótano 1'])
 
 
+class AsignacionTests(BaseEscenario):
+    """Asignar trabajo: el rack deja de elegirse y el supervisor ve lo que nadie asignó."""
+
+    def test_el_rack_del_dia_viene_de_la_asignacion(self):
+        asignacion = AsignacionDiaria.objects.create(rack=self.rack_a)
+        asignacion.trabajadores.add(self.trab_a)
+        asignacion.puntos.add(self._p('DT-001'), self._p('DT-002'))
+
+        self._login("trab_a")
+        r = self.client.get(reverse('marvelec_app:nuevo_reporte'))
+        self.assertEqual(r.context['rack_fijo'], self.rack_a)
+        self.assertEqual(len(r.context['puntos_asignados']), 2)
+        self.assertNotContains(r, 'Selecciona el rack')  # ya no se elige
+
+        # Su compañero no fue asignado: sigue eligiendo el rack a mano.
+        self._login("trab_a2")
+        r = self.client.get(reverse('marvelec_app:nuevo_reporte'))
+        self.assertIsNone(r.context['rack_fijo'])
+        self.assertContains(r, 'Selecciona el rack')
+
+    def test_la_cola_marca_los_reportes_sin_asignacion(self):
+        asignacion = AsignacionDiaria.objects.create(rack=self.rack_a)
+        asignacion.trabajadores.add(self.trab_a)
+        self._avance(self.trab_a, ['DT-001'], ['tendido'])
+        self._avance(self.trab_a2, ['DT-002'], ['tendido'])
+
+        self._login("sup_a")
+        reportes = self.client.get(reverse('marvelec_app:cola_revision')).context['pagina'].object_list
+        marcados = {r.trabajador.username: r.sin_asignacion for r in reportes}
+        self.assertEqual(marcados, {'trab_a': False, 'trab_a2': True})
+
+
 class ResumenDiarioTests(BaseEscenario):
 
     def test_resumen_lista_quien_no_marco_y_no_se_duplica(self):
@@ -943,8 +976,8 @@ class AdminTests(BaseEscenario):
         for nombre in ('admin:index', 'admin:auth_user_changelist', 'admin:auth_group_changelist'):
             self.assertEqual(self.client.get(reverse(nombre)).status_code, 200, nombre)
         for modelo in ('obra', 'zona', 'rack', 'paquete', 'punto', 'tipopunto', 'perfiltrabajador', 'reporteavance',
-                       'tipoincidencia', 'incidencia', 'asistencia', 'conversacion', 'notificacion',
-                       'suscripcionpush', 'resumendiarioenviado'):
+                       'tipoincidencia', 'incidencia', 'asistencia', 'asignaciondiaria', 'conversacion',
+                       'notificacion', 'suscripcionpush', 'resumendiarioenviado'):
             r = self.client.get(reverse(f'admin:marvelec_app_{modelo}_changelist'))
             self.assertEqual(r.status_code, 200, modelo)
         for modelo, pk in (('reporteavance', reporte.pk), ('punto', self._p('DT-001').pk), ('rack', self.rack_a.pk)):

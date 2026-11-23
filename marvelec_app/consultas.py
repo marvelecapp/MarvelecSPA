@@ -13,8 +13,8 @@ from django.utils import timezone
 
 from . import etapas
 from .models import (
-    Asistencia, AvancePunto, Conversacion, Incidencia, Mensaje, Obra, Paquete, PerfilTrabajador, Punto,
-    Rack, ReporteAvance,
+    AsignacionDiaria, Asistencia, AvancePunto, Conversacion, Incidencia, Mensaje, Obra, Paquete,
+    PerfilTrabajador, Punto, Rack, ReporteAvance,
 )
 
 DIAS_RITMO = 14  # ventana para medir el ritmo real de cada etapa
@@ -522,6 +522,28 @@ def asistencia_confirmada(trabajador_id, fecha):
         trabajador_id=trabajador_id, fecha=fecha, tipo=Asistencia.TIPO_ENTRADA,
         estado=Asistencia.ESTADO_CONFIRMADA,
     ).exists()
+
+
+def asignacion_de(usuario, fecha=None):
+    """La asignación de trabajo del día para esa persona, o None si nadie le asignó nada.
+    shortcut: si estuviera en dos del mismo día gana la última; con una cuadrilla por jornada no pasa."""
+    return (AsignacionDiaria.objects
+            .filter(fecha=fecha or hoy_local(), trabajadores=usuario)
+            .select_related('rack__obra').prefetch_related('puntos').order_by('-creada').first())
+
+
+def reportes_sin_asignacion(reportes):
+    """Marca `sin_asignacion` en los reportes cuyo autor no tenía ese rack asignado ese día."""
+    claves = {(r.trabajador_id, timezone.localdate(r.fecha_hora), r.rack_id) for r in reportes}
+    if not claves:
+        return
+    asignadas = set(
+        AsignacionDiaria.objects.filter(
+            fecha__in={f for _, f, _ in claves}, rack_id__in={k for _, _, k in claves},
+        ).values_list('trabajadores__id', 'fecha', 'rack_id')
+    )
+    for r in reportes:
+        r.sin_asignacion = (r.trabajador_id, timezone.localdate(r.fecha_hora), r.rack_id) not in asignadas
 
 
 def marcas_del_dia(usuario, fecha):

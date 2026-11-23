@@ -249,6 +249,8 @@ UNFOLD = {
             {
                 'title': 'Terreno',
                 'items': [
+                    {'title': 'Asignar trabajo', 'icon': 'assignment_ind',
+                     'link': _admin_url('marvelec_app_asignaciondiaria')},
                     {'title': 'Reportes de avance', 'icon': 'assignment',
                      'link': _admin_url('marvelec_app_reporteavance')},
                     {'title': 'Incidencias', 'icon': 'report', 'link': _admin_url('marvelec_app_incidencia')},
@@ -277,6 +279,9 @@ UNFOLD = {
                 'title': 'Aplicación',
                 'items': [
                     {'title': 'Volver a la app', 'icon': 'arrow_back', 'link': '/panel/'},
+                    # Salir estaba sólo dentro del menú de configuración y en PC no se encontraba.
+                    # Va al logout de la app y no al del admin, que en Django 5 sólo acepta POST.
+                    {'title': 'Cerrar sesión', 'icon': 'logout', 'link': reverse_lazy('marvelec_app:logout')},
                 ],
             },
         ],
