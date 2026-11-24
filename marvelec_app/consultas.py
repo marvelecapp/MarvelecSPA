@@ -483,18 +483,26 @@ def historial_punto(punto):
 # =========================================================
 
 def asistencia_del_dia(perfil, fecha, obra_id=None):
-    """[(perfil_trabajador, entrada | None)] de los trabajadores a cargo. Sólo la marca de entrada:
-    es la que el supervisor revisa y la que significa "llegó"."""
+    """
+    [(perfil_trabajador, entrada | None)] de los trabajadores a cargo. La tupla lleva la entrada,
+    que es la que se revisa y la que significa "llegó"; el resto de la jornada queda en
+    `perfil.jornada` para seguir colación y salida sin otra consulta.
+    """
     a_cargo = trabajadores_de(perfil)
     if obra_id:
         a_cargo = a_cargo.filter(obra_asignada_id=obra_id)
-    marcas = {
-        a.trabajador_id: a for a in
-        Asistencia.objects.filter(fecha=fecha, tipo=Asistencia.TIPO_ENTRADA,
-                                  trabajador__in=[p.usuario_id for p in a_cargo])
-        .select_related('obra', 'revisado_por')
-    }
-    return [(p, marcas.get(p.usuario_id)) for p in a_cargo]
+    del_dia = defaultdict(dict)
+    for a in (Asistencia.objects.filter(fecha=fecha, trabajador__in=[p.usuario_id for p in a_cargo])
+              .select_related('obra', 'revisado_por')):
+        del_dia[a.trabajador_id][a.tipo] = a
+
+    etiquetas = dict(Asistencia.TIPO_CHOICES)
+    filas = []
+    for p in a_cargo:
+        marcas = del_dia[p.usuario_id]
+        p.jornada = [(etiquetas[t], marcas.get(t)) for t in Asistencia.TIPOS_EN_ORDEN]
+        filas.append((p, marcas.get(Asistencia.TIPO_ENTRADA)))
+    return filas
 
 
 def asistencia_mensual(perfil, anio, mes, obra_id=None):

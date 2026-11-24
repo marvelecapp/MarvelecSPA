@@ -51,16 +51,21 @@
                     <b>{{ p.usuario|nombre_usuario }}</b>
                     {% if a %}<span class="badge badge-dot badge-{{ a.estado }}" data-asistencia-estado>{{ a.get_estado_display }}</span>{% else %}<span class="badge">Sin marca</span>{% endif %}
                 </div>
+                <span class="jornada-linea small">
+                    {% for etiqueta, marca in p.jornada %}
+                    <span class="{% if marca %}is-hecha{% endif %}" title="{{ etiqueta }}">
+                        {{ etiqueta|slice:":3" }} {% if marca %}{{ marca.hora|time:"H:i" }}{% else %}—{% endif %}
+                    </span>
+                    {% endfor %}
+                </span>
                 {% if a %}
-                <span class="small muted">{% icono "clock" "icon-sm" %} {{ a.hora|time:"H:i" }}{% if not obra_fija %} · {{ a.obra }}{% endif %}{% if a.enviado_offline %} · enviada sin señal{% endif %}</span>
+                <span class="small muted">{% if not obra_fija %}{{ a.obra }}{% endif %}{% if a.enviado_offline %} · enviada sin señal{% endif %}</span>
                 <span class="small">{% if a.url_mapa %}<a href="{{ a.url_mapa }}" target="_blank" rel="noopener">{% icono "pin" "icon-sm" %} Ubicación{% if a.precision %} (±{{ a.precision }} m){% endif %}</a>{% else %}<span class="muted">Sin GPS</span>{% endif %}</span>
                 {% if a.motivo_rechazo %}<span class="small" style="color:var(--danger)">Rechazo: {{ a.motivo_rechazo }}</span>{% endif %}
                 <div class="row mt-1" data-asistencia-acciones data-url="{% url 'marvelec_app:revisar_asistencia' a.pk %}">
                     {% if a.estado != "confirmada" %}<button type="button" class="btn btn-success btn-sm" data-accion-asistencia="confirmar">{% icono "check" "icon-sm" %} Confirmar</button>{% endif %}
                     {% if a.estado != "rechazada" %}<button type="button" class="btn btn-warn btn-sm" data-accion-asistencia="rechazar">{% icono "x" "icon-sm" %} Rechazar</button>{% endif %}
                 </div>
-                {% else %}
-                <span class="small muted">{{ p.obra_asignada|default:"Sin obra asignada" }}</span>
                 {% endif %}
             </div>
         </article>

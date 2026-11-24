@@ -434,6 +434,22 @@ class AsistenciaTests(BaseEscenario):
         fila = consultas.ranking_trabajadores(ReporteAvance.objects.all())[0]
         self.assertEqual(fila['jornadas_asistencia'], 1)
 
+    def test_el_supervisor_ve_la_jornada_completa(self):
+        self._login("trab_a")
+        for tipo in (Asistencia.TIPO_ENTRADA, Asistencia.TIPO_INICIO_COLACION):
+            self._marcar(tipo=tipo)
+
+        perfil_sup = PerfilTrabajador.objects.get(usuario=self.sup_a)
+        filas = consultas.asistencia_del_dia(perfil_sup, consultas.hoy_local())
+        jornadas = {p.usuario.username: [(e, m is not None) for e, m in p.jornada] for p, _ in filas}
+        self.assertEqual(jornadas['trab_a'],
+                         [('Entrada', True), ('Inicio colación', True), ('Fin colación', False), ('Salida', False)])
+        self.assertEqual([hecha for _, hecha in jornadas['trab_a2']], [False] * 4)
+
+        self._login("sup_a")
+        r = self.client.get(reverse('marvelec_app:asistencia_dia'))
+        self.assertContains(r, 'Inicio colación')
+
     def test_foto_obligatoria(self):
         self._login("trab_a")
         r = self.client.post(reverse('marvelec_app:api_asistencia'), {'obra': self.obra_a.pk})
