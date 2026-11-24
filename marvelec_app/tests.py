@@ -449,6 +449,9 @@ class AsistenciaTests(BaseEscenario):
         self._login("sup_a")
         r = self.client.get(reverse('marvelec_app:asistencia_dia'))
         self.assertContains(r, 'Inicio colación')
+        # Cada marca con foto se abre en el visor: antes sólo se veía la de la llegada.
+        self.assertContains(r, 'con-foto', count=2)  # entrada e inicio de colación
+        self.assertContains(r, 'Inicio colación 2')  # el pie del visor lleva la fecha de esa marca
 
     def test_foto_obligatoria(self):
         self._login("trab_a")

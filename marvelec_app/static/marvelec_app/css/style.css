@@ -900,11 +900,14 @@ code { font-size: .85em; padding: 1px 5px; border-radius: 5px; background: var(-
 
 /* Seguimiento de la jornada en la tarjeta del supervisor: entrada, colación y salida. */
 .jornada-linea { display: flex; flex-wrap: wrap; gap: 4px; font-variant-numeric: tabular-nums; }
-.jornada-linea span {
-    padding: 2px 7px; border-radius: 6px; font-size: .75rem;
-    background: var(--surface-2); color: var(--muted);
+.jornada-linea span, .jornada-linea button {
+    padding: 2px 7px; border-radius: 6px; font-size: .75rem; font-family: inherit;
+    border: 1px solid transparent; background: var(--surface-2); color: var(--muted);
 }
-.jornada-linea span.is-hecha { background: var(--brand-50); color: var(--brand-text); font-weight: 650; }
+.jornada-linea .is-hecha { background: var(--brand-50); color: var(--brand-text); font-weight: 650; }
+/* La marca con foto se puede abrir: es la única forma de ver la de colación o salida. */
+.jornada-linea .con-foto { cursor: zoom-in; border-color: var(--brand-400); }
+.jornada-linea .con-foto:hover { background: var(--brand); color: #fff; }
 
 /* =========================================================
    JORNADA (entrada · colación · salida)

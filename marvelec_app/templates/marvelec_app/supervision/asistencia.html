@@ -53,9 +53,17 @@
                 </div>
                 <span class="jornada-linea small">
                     {% for etiqueta, marca in p.jornada %}
+                    {% if marca.foto %}
+                    <button type="button" class="is-hecha con-foto" title="{{ etiqueta }} · ver foto"
+                            data-lightbox="{{ marca.foto.url }}"
+                            data-caption="{{ p.usuario|nombre_usuario }} · {{ etiqueta }} {{ marca.hora|date:'d-m-Y H:i' }}{% if marca.precision %} · GPS ±{{ marca.precision }} m{% endif %}">
+                        {{ etiqueta|slice:":3" }} {{ marca.hora|time:"H:i" }}
+                    </button>
+                    {% else %}
                     <span class="{% if marca %}is-hecha{% endif %}" title="{{ etiqueta }}">
                         {{ etiqueta|slice:":3" }} {% if marca %}{{ marca.hora|time:"H:i" }}{% else %}—{% endif %}
                     </span>
+                    {% endif %}
                     {% endfor %}
                 </span>
                 {% if a %}
