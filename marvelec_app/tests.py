@@ -829,12 +829,12 @@ class PantallasTests(BaseEscenario):
     def test_pantallas_supervision(self):
         for usuario in ('sup_a', 'gerente'):
             self._login(usuario)
+            # El panel es sólo lo de hoy: sin gráficos, sin filtros y sin rendimiento.
             r = self._ok('panel_supervision')
-            self.assertContains(r, 'datos-graficos')
-            for rango in ('hoy', '7', 'mes'):
-                self._ok('panel_supervision', params={'rango': rango})
-            self._ok('panel_supervision', params={'desde': '2020-01-01', 'hasta': '2030-01-01', 'obra': self.obra_a.pk,
-                                                  'etapa': 'tendido', 'rack': self.rack_a.pk})
+            for texto in ('Etapas de hoy', 'Por revisar', 'Puntos bloqueados', 'Llegadas de hoy'):
+                self.assertContains(r, texto)
+            for fuera in ('datos-graficos', 'Rendimiento', 'Mejor rendimiento'):
+                self.assertNotContains(r, fuera)
             r = self._ok('avance_obra', params={'obra': self.obra_a.pk})
             self.assertContains(r, 'Proyección por etapa')
             for params in ({}, {'pendiente': 'bajada'}, {'bloqueados': '1'}):

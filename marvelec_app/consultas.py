@@ -216,32 +216,6 @@ def racks_por_obra(obras):
 # Gráficos e indicadores del período
 # =========================================================
 
-def serie_avance_por_dia(avances, desde, hasta):
-    """Etapas completadas por día, una serie por etapa (días sin avance en 0)."""
-    filas = (
-        avances.annotate(dia=TruncDate('reporte__fecha_hora'))
-        .values('dia', 'etapa').annotate(total=Count('id')).order_by()
-    )
-    por_dia = defaultdict(dict)
-    for f in filas:
-        por_dia[f['dia']][f['etapa']] = f['total']
-
-    if not desde:
-        desde = min(por_dia) if por_dia else hasta
-    dias = []
-    d = desde
-    while d <= hasta:
-        dias.append(d)
-        d += timedelta(days=1)
-    dias = dias[-120:]  # evita gráficos ilegibles con rangos enormes
-
-    return {
-        'labels': [d.strftime('%d-%m') for d in dias],
-        'series': {e.clave: [por_dia.get(d, {}).get(e.clave, 0) for d in dias] for e in etapas.ETAPAS},
-        'nombres': {e.clave: e.nombre for e in etapas.ETAPAS},
-    }
-
-
 def avance_por_etapa(avances):
     conteo = {e.clave: 0 for e in etapas.ETAPAS}
     for f in avances.values('etapa').annotate(total=Count('id')).order_by():

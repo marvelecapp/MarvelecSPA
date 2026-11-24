@@ -532,7 +532,7 @@ a.r-card:hover { border-color: var(--border-strong); }
 
 /* KPIs */
 .kpis { display: grid; gap: 12px; grid-template-columns: repeat(2, 1fr); }
-@media (min-width: 900px) { .kpis { grid-template-columns: repeat(5, 1fr); } }
+@media (min-width: 900px) { .kpis { grid-auto-flow: column; grid-auto-columns: 1fr; } }
 .kpi {
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
     padding: 16px; box-shadow: var(--shadow-sm); display: grid; gap: 4px; text-decoration: none; color: inherit;
@@ -560,8 +560,6 @@ a.kpi:hover { border-color: var(--brand-400); }
 .segmented .is-active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
 
 /* Gráficos */
-.chart-box { position: relative; height: 280px; }
-.chart-box.sm { height: 230px; }
 
 /* Tabla */
 .table-wrap { overflow-x: auto; }

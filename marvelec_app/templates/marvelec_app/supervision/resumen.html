@@ -1,39 +1,21 @@
 {% extends "layouts/escritorio.html" %}
 {% load static marvelec_tags %}
 {% block title %}Resumen - MARVELEC{% endblock %}
-{% block page_title %}Resumen de avance{% endblock %}
-{% block page_subtitle %}{% if perfil.rol == "gerencia" or not perfil.obra_asignada %}Todas las obras{% else %}{{ perfil.obra_asignada }}{% endif %} · {% if filtros.desde %}{{ filtros.desde|date:"d-m-Y" }}{% else %}Inicio{% endif %} al {{ filtros.hasta|default:hoy|date:"d-m-Y" }}{% endblock %}
-{% block topbar_actions %}
-<a class="btn btn-secondary hide-mobile" href="{% url 'marvelec_app:exportar_excel' %}?{{ querystring }}">{% icono "download" "icon-sm" %} Excel</a>
-{% endblock %}
+{% block page_title %}Resumen de hoy{% endblock %}
+{% block page_subtitle %}{{ hoy|date:"l j \d\e F" }}{% if perfil.obra_asignada %} · {{ perfil.obra_asignada }}{% endif %}{% endblock %}
 {% block content %}
 <div class="stack-lg">
-    <div class="row-between">
-        <div class="segmented">
-            <a href="{% qs rango='hoy' desde='' hasta='' %}" class="{% if rango == 'hoy' %}is-active{% endif %}">Hoy</a>
-            <a href="{% qs rango='7' desde='' hasta='' %}" class="{% if rango == '7' %}is-active{% endif %}">7 días</a>
-            <a href="{% qs rango='30' desde='' hasta='' %}" class="{% if rango == '30' %}is-active{% endif %}">30 días</a>
-            <a href="{% qs rango='mes' desde='' hasta='' %}" class="{% if rango == 'mes' %}is-active{% endif %}">Este mes</a>
-        </div>
-        <div class="banner" style="padding:8px 14px" data-push-banner="inactivo" hidden>
-            {% icono "bell" "icon-sm" %}
-            <span class="small">Recibe avisos de reportes e incidencias</span>
-            <button type="button" class="btn btn-sm" data-push-activar>Activar notificaciones</button>
-        </div>
+    <div class="banner" data-push-banner="inactivo" hidden>
+        {% icono "bell" "icon-sm" %}
+        <span class="small">Recibe avisos de reportes e incidencias</span>
+        <button type="button" class="btn btn-sm" data-push-activar>Activar notificaciones</button>
     </div>
-
-    {% include "marvelec_app/partials/filtros.html" with con_fechas=True con_etapa=True %}
 
     <div class="kpis">
         <div class="kpi">
-            <span class="kpi-label">{% icono "bolt" %} Etapas completadas</span>
-            <span class="kpi-value">{{ total_puntos }}</span>
-            <span class="kpi-hint">{{ certificados }} certificado{{ certificados|pluralize }} · {{ total_reportes }} reporte{{ total_reportes|pluralize }}</span>
-        </div>
-        <div class="kpi">
-            <span class="kpi-label">{% icono "trophy" %} Rendimiento</span>
-            <span class="kpi-value">{{ rendimiento }}%</span>
-            <span class="kpi-hint">del estándar por jornada</span>
+            <span class="kpi-label">{% icono "bolt" %} Etapas de hoy</span>
+            <span class="kpi-value">{{ etapas_hoy }}</span>
+            <span class="kpi-hint">registradas por el equipo</span>
         </div>
         <a class="kpi {% if pendientes %}kpi-warn{% endif %}" href="{% url 'marvelec_app:cola_revision' %}">
             <span class="kpi-label">{% icono "inbox" %} Por revisar</span>
@@ -45,68 +27,32 @@
             <span class="kpi-value">{{ incidencias_abiertas }}</span>
             <span class="kpi-hint">{% if incidencias_abiertas %}Ver incidencias →{% else %}Sin incidencias abiertas{% endif %}</span>
         </a>
-        <a class="kpi" href="{% url 'marvelec_app:asistencia_dia' %}">
-            <span class="kpi-label">{% icono "calendar" %} Llegadas hoy</span>
-            <span class="kpi-value">{{ marcaron_hoy }}<span class="muted" style="font-size:1rem"> / {{ a_cargo }}</span></span>
-            <span class="kpi-hint">trabajadores a cargo</span>
-        </a>
-    </div>
-
-    <div class="grid-2 grid-2-1">
-        <section class="card">
-            <div class="card-header"><h3>{% icono "chart" %} Etapas completadas por día</h3></div>
-            <div class="chart-box"><canvas id="g-dias" aria-label="Etapas completadas por día"></canvas></div>
-            <div class="leyenda-etapas small muted">
-                {% for valor, etiqueta in etapas_choices %}<span><i class="tipo-dot etapa-{{ valor }}"></i>{{ etiqueta }}</span>{% endfor %}
-            </div>
-        </section>
-        <section class="card">
-            <div class="card-header"><h3>Distribución por etapa</h3></div>
-            <div class="chart-box"><canvas id="g-etapas" aria-label="Distribución por etapa"></canvas></div>
-        </section>
-    </div>
-
-    <div class="grid-2">
-        <section class="card">
-            <div class="card-header">
-                <h3>{% icono "trophy" %} Mejor rendimiento</h3>
-                <a href="{% url 'marvelec_app:trabajadores' %}?{{ querystring }}" class="btn btn-ghost btn-sm">Ver ranking</a>
-            </div>
-            {% for r in top %}
-            <div class="bar-cell mb-2">
-                <span class="person" style="width:200px">
-                    <span class="avatar">{{ r.nombre|slice:":1" }}</span>
-                    <span><b>{{ r.nombre }}</b><small>{{ r.jornadas }} jornada{{ r.jornadas|pluralize }} · {{ r.puntos }} etapas</small></span>
-                </span>
-                <span class="bar"><i style="width:{{ r.rendimiento|porcentaje:max_top }}%"></i></span>
-                <b class="num">{{ r.rendimiento }}%</b>
-            </div>
-            {% empty %}
-            <div class="empty small">Sin reportes en el período.</div>
-            {% endfor %}
-        </section>
-        <section class="card">
-            <div class="card-header">
-                <h3>{% icono "calendar" %} Sin marcar llegada hoy</h3>
-                <span class="badge {% if sin_marcar %}badge-pendiente{% else %}badge-aprobado{% endif %}">{{ sin_marcar|length }}</span>
-            </div>
-            {% if sin_marcar %}
-            <div class="chips">
-                {% for p in sin_marcar %}
-                <span class="chip"><span class="avatar">{{ p.usuario|iniciales }}</span>{{ p.usuario|nombre_usuario }}{% if not obra_fija and p.obra_asignada %} <span class="muted">· {{ p.obra_asignada }}</span>{% endif %}</span>
-                {% endfor %}
-            </div>
-            {% elif a_cargo %}
-            <div class="empty small">{% icono "check-circle" %}Todos marcaron su llegada hoy.</div>
-            {% else %}
-            <div class="empty small">No hay trabajadores asignados.</div>
-            {% endif %}
-        </section>
     </div>
 
     <section class="card">
         <div class="card-header">
-            <h3>{% icono "clock" %} Actividad reciente</h3>
+            <h3>{% icono "calendar" %} Llegadas de hoy</h3>
+            <a href="{% url 'marvelec_app:asistencia_dia' %}" class="btn btn-ghost btn-sm">
+                {{ marcaron_hoy }} de {{ a_cargo }} · Ver jornada
+            </a>
+        </div>
+        {% if sin_marcar %}
+        <p class="small muted mt-0">Sin marcar llegada:</p>
+        <div class="chips">
+            {% for p in sin_marcar %}
+            <span class="chip"><span class="avatar">{{ p.usuario|iniciales }}</span>{{ p.usuario|nombre_usuario }}{% if not perfil.obra_asignada and p.obra_asignada %} <span class="muted">· {{ p.obra_asignada }}</span>{% endif %}</span>
+            {% endfor %}
+        </div>
+        {% elif a_cargo %}
+        <div class="empty small">{% icono "check-circle" %}Todos marcaron su llegada hoy.</div>
+        {% else %}
+        <div class="empty small">No hay trabajadores asignados.</div>
+        {% endif %}
+    </section>
+
+    <section class="card">
+        <div class="card-header">
+            <h3>{% icono "clock" %} Lo último que reportaron</h3>
             <a href="{% url 'marvelec_app:lista_reportes' %}" class="btn btn-ghost btn-sm">Ver todos</a>
         </div>
         <div class="feed">
@@ -120,15 +66,12 @@
                 {% include "marvelec_app/partials/estado_badge.html" %}
             </a>
             {% empty %}
-            <div class="empty small">No hay reportes en el período.</div>
+            <div class="empty small">Todavía no hay reportes.</div>
             {% endfor %}
         </div>
     </section>
 </div>
-
-{{ graficos|json_script:"datos-graficos" }}
 {% endblock %}
 {% block page_scripts %}
-<script src="{% static 'marvelec_app/vendor/chart.umd.min.js' %}"></script>
 <script src="{% static 'marvelec_app/js/supervision.js' %}"></script>
 {% endblock %}

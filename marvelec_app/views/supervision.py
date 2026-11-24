@@ -61,59 +61,28 @@ def _rack_visible(perfil, pk):
 
 @revisor_requerido
 def dashboard_supervisor(request):
+    """
+    Lo de hoy y lo que necesita atención, nada más. Los gráficos, la proyección y el
+    rendimiento viven en "Avance de obra" y "Trabajadores": el supervisor de una empresa
+    chica entra a ver qué tiene que hacer, no a leer indicadores.
+    """
     perfil = request.perfil
     hoy = consultas.hoy_local()
-    # Atajos de período (Hoy / 7 días / 30 días / Este mes); por defecto, últimos 30 días.
-    rangos = {'hoy': hoy, '7': hoy - timedelta(days=6), '30': hoy - timedelta(days=29), 'mes': hoy.replace(day=1)}
-    if 'desde' in request.GET:
-        rango = ''
-    else:
-        rango = request.GET.get('rango', '30')
-        rango = rango if rango in rangos else '30'
-    filtros = consultas.leer_filtros(request.GET, desde_por_defecto=rangos[rango] if rango else None)
-    hasta = filtros['hasta'] or hoy
-
     base = consultas.reportes_visibles(perfil)
-    reportes = consultas.aplicar_filtros(base, filtros)
-    avances = consultas.avances_de(reportes, filtros)
-    por_etapa = consultas.avance_por_etapa(avances)
-    ranking = consultas.ranking_trabajadores(reportes, filtros['desde'], hasta)
-    jornadas = sum(r['jornadas'] for r in ranking)
-    equivalente = sum(r['equivalente'] for r in ranking)
+    asistencia_hoy = consultas.asistencia_del_dia(perfil, hoy)
 
-    asistencia_hoy = consultas.asistencia_del_dia(perfil, hoy, filtros['obra'])
-    incidencias = consultas.incidencias_visibles(perfil).filter(estado=Incidencia.ESTADO_ABIERTA)
-    if filtros['obra']:
-        incidencias = incidencias.filter(punto__rack__obra_id=filtros['obra'])
-
-    context = {
-        **_contexto_filtros(perfil, filtros),
+    return render(request, 'marvelec_app/supervision/resumen.html', {
         'perfil': perfil,
         'hoy': hoy,
-        'total_puntos': sum(por_etapa.values()),
-        'certificados': por_etapa[etapas.FINAL],
-        'total_reportes': reportes.count(),
+        'etapas_hoy': consultas.avances_de(base.filter(fecha_hora__date=hoy)).count(),
         'pendientes': base.filter(estado=ReporteAvance.ESTADO_PENDIENTE).exclude(trabajador=request.user).count(),
-        'rendimiento': round(100 * equivalente / jornadas) if jornadas else 0,
-        'incidencias_abiertas': incidencias.count(),
+        'incidencias_abiertas': consultas.incidencias_visibles(perfil).filter(
+            estado=Incidencia.ESTADO_ABIERTA).count(),
         'marcaron_hoy': sum(1 for _, a in asistencia_hoy if a),
         'a_cargo': len(asistencia_hoy),
         'sin_marcar': [p for p, a in asistencia_hoy if a is None],
-        'top': ranking[:5],
-        'max_top': max((r['rendimiento'] for r in ranking[:5]), default=0),
-        'recientes': reportes.order_by('-fecha_hora')[:8],
-        'querystring': _querystring(filtros),
-        'graficos': {
-            'por_dia': consultas.serie_avance_por_dia(avances, filtros['desde'], hasta),
-            'por_etapa': {
-                'labels': [e.nombre for e in etapas.ETAPAS],
-                'claves': [e.clave for e in etapas.ETAPAS],
-                'valores': [por_etapa[e.clave] for e in etapas.ETAPAS],
-            },
-        },
-        'rango': rango,
-    }
-    return render(request, 'marvelec_app/supervision/resumen.html', context)
+        'recientes': base.order_by('-fecha_hora')[:8],
+    })
 
 
 # =========================================================
