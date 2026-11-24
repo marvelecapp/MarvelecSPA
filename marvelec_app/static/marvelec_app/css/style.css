@@ -803,6 +803,13 @@ code { font-size: .85em; padding: 1px 5px; border-radius: 5px; background: var(-
     width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--surface-2); cursor: zoom-in;
     display: grid; place-items: center; align-content: center; gap: 6px; color: var(--muted);
 }
+/* La foto grande es la de la marca más reciente, así que lleva su etiqueta encima. */
+.asistencia-foto-caja { position: relative; }
+.asistencia-foto-marca {
+    position: absolute; left: 8px; bottom: 8px; padding: 3px 8px; border-radius: 6px;
+    background: rgba(10, 8, 30, .72); color: #fff; font-size: .72rem; font-weight: 650;
+    font-variant-numeric: tabular-nums; backdrop-filter: blur(4px);
+}
 .asistencia-info { display: grid; gap: 4px; padding: 12px 14px; }
 .asistencia-card.is-falta { border-style: dashed; opacity: .85; }
 .asistencia-card.is-falta .asistencia-foto { cursor: default; }

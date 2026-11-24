@@ -475,6 +475,9 @@ def asistencia_del_dia(perfil, fecha, obra_id=None):
     for p in a_cargo:
         marcas = del_dia[p.usuario_id]
         p.jornada = [(etiquetas[t], marcas.get(t)) for t in Asistencia.TIPOS_EN_ORDEN]
+        # La foto grande es la de la última marca: muestra dónde está ahora, no dónde llegó.
+        con_foto = [(e, m) for e, m in p.jornada if m and m.foto]
+        p.ultima_foto = con_foto[-1] if con_foto else (None, None)
         filas.append((p, marcas.get(Asistencia.TIPO_ENTRADA)))
     return filas
 

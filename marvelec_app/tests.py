@@ -453,6 +453,12 @@ class AsistenciaTests(BaseEscenario):
         self.assertContains(r, 'con-foto', count=2)  # entrada e inicio de colación
         self.assertContains(r, 'Inicio colación 2')  # el pie del visor lleva la fecha de esa marca
 
+        # La foto grande es la de la última marca, no la de la llegada.
+        fila = next(p for p, _ in consultas.asistencia_del_dia(perfil_sup, consultas.hoy_local())
+                    if p.usuario_id == self.trab_a.pk)
+        self.assertEqual(fila.ultima_foto[0], 'Inicio colación')
+        self.assertContains(r, 'asistencia-foto-marca')
+
     def test_foto_obligatoria(self):
         self._login("trab_a")
         r = self.client.post(reverse('marvelec_app:api_asistencia'), {'obra': self.obra_a.pk})

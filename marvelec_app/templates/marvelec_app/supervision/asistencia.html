@@ -40,12 +40,19 @@
     <div class="asistencia-grid">
         {% for p, a in filas %}
         <article class="asistencia-card {% if not a %}is-falta{% else %}is-{{ a.estado }}{% endif %}" data-asistencia>
-            {% if a and a.foto %}
-            <img class="asistencia-foto" src="{{ a.foto.url }}" alt="Foto de llegada de {{ p.usuario|nombre_usuario }}" loading="lazy"
-                 data-lightbox="{{ a.foto.url }}" data-caption="{{ p.usuario|nombre_usuario }} · {{ a.hora|date:'d-m-Y H:i' }}">
+            {% with etiqueta=p.ultima_foto.0 ultima=p.ultima_foto.1 %}
+            {% if ultima %}
+            <div class="asistencia-foto-caja">
+                <img class="asistencia-foto" src="{{ ultima.foto.url }}" loading="lazy"
+                     alt="{{ etiqueta }} de {{ p.usuario|nombre_usuario }}"
+                     data-lightbox="{{ ultima.foto.url }}"
+                     data-caption="{{ p.usuario|nombre_usuario }} · {{ etiqueta }} {{ ultima.hora|date:'d-m-Y H:i' }}{% if ultima.precision %} · GPS ±{{ ultima.precision }} m{% endif %}">
+                <span class="asistencia-foto-marca">{{ etiqueta }} · {{ ultima.hora|time:"H:i" }}</span>
+            </div>
             {% else %}
             <div class="asistencia-foto">{% icono "camera" "icon-lg" %}<span class="small">{% if a %}Sin foto{% else %}No marcó llegada{% endif %}</span></div>
             {% endif %}
+            {% endwith %}
             <div class="asistencia-info">
                 <div class="row-between">
                     <b>{{ p.usuario|nombre_usuario }}</b>
